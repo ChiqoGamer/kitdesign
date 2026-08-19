@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Design tokens de KitDesign.
+ * Se definen ANTES de traer cualquier librería de componentes: es lo que
+ * evita terminar con el aspecto "dashboard genérico". Fondo casi negro
+ * para que el único color saturado en pantalla sea el de la camiseta.
+ */
+@theme {
+  --color-ink-950: #07090b;
+  --color-ink-900: #0b0d10;
+  --color-ink-850: #101318;
+  --color-ink-800: #14181e;
+  --color-ink-700: #1b2029;
+  --color-ink-600: #262c38;
+  --color-ink-500: #3a424f;
+  --color-ink-400: #6b7482;
+  --color-ink-300: #9aa3b1;
+  --color-ink-100: #dfe4ea;
+  --color-ink-50: #f2f5f8;
+
+  --color-accent: #c6f24e;
+  --color-accent-dim: #9fc63a;
+  --color-accent-ink: #0b0d10;
+
+  --radius-panel: 10px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink-900);
+  color: var(--color-ink-100);
+  overscroll-behavior: none;
+}
+
+/* Sliders: el control más usado del editor, así que vale estilarlo bien. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 20px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-ink-600);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: var(--color-ink-50);
+  border: none;
+  transition: transform 0.12s ease;
+}
+input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+input[type="range"]:active::-webkit-slider-thumb {
+  background: var(--color-accent);
+}
+
+input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: 1px solid var(--color-ink-600);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-600);
+  border-radius: 6px;
+  border: 3px solid var(--color-ink-850);
 }

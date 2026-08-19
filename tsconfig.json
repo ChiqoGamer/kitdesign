@@ -19,7 +19,10 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@core/*": ["./packages/design-core/*"],
+      "@geom/*": ["./packages/garment-geometry/*"],
+      "@render/*": ["./packages/design-render/*"]
     }
   },
   "include": [
