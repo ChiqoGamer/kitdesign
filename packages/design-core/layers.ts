@@ -39,6 +39,8 @@ export interface Anchor {
    * El renderer invierte el dibujo para que el texto no salga al revés.
    */
   mirror: boolean;
+  /** Posición en la vista plana 2D: qué cara y coords normalizadas (0..1). */
+  flat: { side: "front" | "back"; x: number; y: number };
 }
 
 export const ANCHORS: Record<AnchorId, Anchor> = {
@@ -49,6 +51,7 @@ export const ANCHORS: Record<AnchorId, Anchor> = {
     uv: { x: 0.13, y: 0.84 },
     baseSize: 0.1,
     mirror: false,
+    flat: { side: "front", x: 0.62, y: 0.30 },
   },
   chest: {
     id: "chest",
@@ -57,6 +60,7 @@ export const ANCHORS: Record<AnchorId, Anchor> = {
     uv: { x: 0.195, y: 0.72 },
     baseSize: 0.16,
     mirror: false,
+    flat: { side: "front", x: 0.5, y: 0.42 },
   },
   sleeveR: {
     id: "sleeveR",
@@ -65,6 +69,7 @@ export const ANCHORS: Record<AnchorId, Anchor> = {
     uv: { x: 0.8775, y: 0.8 },
     baseSize: 0.11,
     mirror: false,
+    flat: { side: "front", x: 0.85, y: 0.26 },
   },
   sleeveL: {
     id: "sleeveL",
@@ -73,6 +78,7 @@ export const ANCHORS: Record<AnchorId, Anchor> = {
     uv: { x: 0.8775, y: 0.45 },
     baseSize: 0.11,
     mirror: true,
+    flat: { side: "front", x: 0.15, y: 0.26 },
   },
   backName: {
     id: "backName",
@@ -81,6 +87,7 @@ export const ANCHORS: Record<AnchorId, Anchor> = {
     uv: { x: 0.57, y: 0.88 },
     baseSize: 0.075,
     mirror: true,
+    flat: { side: "back", x: 0.5, y: 0.26 },
   },
   backNumber: {
     id: "backNumber",
@@ -89,6 +96,7 @@ export const ANCHORS: Record<AnchorId, Anchor> = {
     uv: { x: 0.57, y: 0.68 },
     baseSize: 0.17,
     mirror: true,
+    flat: { side: "back", x: 0.5, y: 0.46 },
   },
   shortsNumber: {
     id: "shortsNumber",
@@ -97,6 +105,7 @@ export const ANCHORS: Record<AnchorId, Anchor> = {
     uv: { x: 0.27, y: 0.6 },
     baseSize: 0.16,
     mirror: false,
+    flat: { side: "front", x: 0.34, y: 0.42 },
   },
 };
 

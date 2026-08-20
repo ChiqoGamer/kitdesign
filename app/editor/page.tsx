@@ -16,6 +16,7 @@ import { TemplatePanel } from "@/src/editor/panels/TemplatePanel";
 import { ConstructionPanel } from "@/src/editor/panels/ConstructionPanel";
 import { LayersPanel } from "@/src/editor/panels/LayersPanel";
 import { TextureView } from "@/src/editor/TextureView";
+import { FlatView } from "@/src/editor/FlatView";
 import { IconButton } from "@/src/components/ui";
 import { VIEW_LABELS, type ViewName } from "@/src/three/Viewer";
 
@@ -45,7 +46,7 @@ const FOCUS_TABS: { id: GarmentId | "all"; label: string }[] = [
   ...GARMENT_IDS.map((g) => ({ id: g, label: GARMENT_LABELS[g] })),
 ];
 
-type Mode = "3d" | "texture";
+type Mode = "3d" | "flat" | "texture";
 
 export default function EditorPage() {
   const design = useEditor((s) => s.design);
@@ -111,6 +112,7 @@ export default function EditorPage() {
           {(
             [
               { id: "3d", label: "3D" },
+              { id: "flat", label: "2D" },
               { id: "texture", label: "Textura" },
             ] as { id: Mode; label: string }[]
           ).map((m) => (
@@ -231,6 +233,8 @@ export default function EditorPage() {
                 Arrastrá para rotar · rueda para zoom
               </div>
             </>
+          ) : mode === "flat" ? (
+            <FlatView design={design} revision={revision} />
           ) : (
             <TextureView design={design} revision={revision} />
           )}
