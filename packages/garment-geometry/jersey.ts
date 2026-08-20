@@ -378,9 +378,9 @@ function emitSleeve(
 function emitCollar(acc: Accum, grid: Grid, rect: PieceRect): void {
   const rim = grid.pos[grid.pos.length - 1];
   const rimN = grid.nrm[grid.nrm.length - 1];
-  const SEG_A = 14;
-  const RU = 0.0088;
-  const RV = 0.0108;
+  const SEG_A = 20;
+  const RU = 0.013; // grosor (hacia afuera del cuerpo)
+  const RV = 0.02; // alto de la cinta (a lo largo del borde del escote)
 
   const tangent = new THREE.Vector3();
   const normal = new THREE.Vector3();
@@ -398,7 +398,7 @@ function emitCollar(acc: Accum, grid: Grid, rect: PieceRect): void {
     binormal.crossVectors(tangent, normal).normalize();
     // Reortogonaliza para que el marco siga la inclinación de la V.
     normal.crossVectors(binormal, tangent).normalize();
-    center.copy(rim[j]).addScaledVector(normal, RU * 0.35);
+    center.copy(rim[j]).addScaledVector(normal, RU * 0.55);
 
     const pr: THREE.Vector3[] = [];
     const nr: THREE.Vector3[] = [];
