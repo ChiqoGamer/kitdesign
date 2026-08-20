@@ -30,7 +30,7 @@ const AZIMUTH: Record<ViewName, number> = {
 
 /** Encuadre por prenda: a qué altura mirar y desde qué distancia. */
 const FRAMING: Record<KitFocus, { targetY: number; radius: number }> = {
-  all: { targetY: 0, radius: 3.3 },
+  all: { targetY: 0.02, radius: 3.55 },
   jersey: { targetY: 0.47, radius: 1.9 },
   shorts: { targetY: -0.02, radius: 1.4 },
   socks: { targetY: -0.6, radius: 1.45 },

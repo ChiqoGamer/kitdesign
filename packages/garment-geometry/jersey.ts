@@ -41,7 +41,7 @@ import { lerp, noise2, profileAt, smoothstep, superellipse } from "./math";
 const N_THETA = 128; // divisiones alrededor del cuerpo (par, para partir en 2)
 const N_BODY = 30; // filas del tubo
 const N_YOKE = 14; // filas del canesú
-const SUPER_N = 2.7;
+const SUPER_N = 2.15;
 
 const HEM_Y = 0;
 const RIM_Y = 0.665; // borde superior del tubo (línea de hombro)
@@ -59,18 +59,18 @@ const SHOULDER_SLOPE = 0.045;
 
 /** Ancho (semieje X) del torso a lo largo de la altura. */
 const WIDTH_PROFILE: [number, number][] = [
-  [0.0, 0.256],
-  [0.35, 0.246],
-  [0.72, 0.271],
-  [1.0, 0.234],
+  [0.0, 0.234], // ruedo — leve campana
+  [0.30, 0.206], // cintura — claramente más angosta
+  [0.68, 0.258], // pecho — lo más ancho
+  [1.0, 0.222], // base del hombro
 ];
 
 /** Profundidad (semieje Z) del torso. */
 const DEPTH_PROFILE: [number, number][] = [
-  [0.0, 0.152],
-  [0.35, 0.144],
-  [0.72, 0.163],
-  [1.0, 0.150],
+  [0.0, 0.132],
+  [0.30, 0.121],
+  [0.68, 0.163],
+  [1.0, 0.146],
 ];
 
 interface NeckShape {
@@ -153,7 +153,11 @@ function torsoPoint(
   shape: NeckShape,
   out: THREE.Vector3,
 ): THREE.Vector3 {
-  const [sx, sz] = superellipse(theta, SUPER_N);
+  const [sx, sz0] = superellipse(theta, SUPER_N);
+  // Asimetría pecho/espalda: el frente es más profundo y redondo, la
+  // espalda más plana. Es lo que da la lectura de "hay un cuerpo adentro"
+  // en vez de un tubo simétrico. sz0>0 mira al frente.
+  const sz = sz0 > 0 ? sz0 * 1.08 : sz0 * 0.9;
   const disp = 1 + wrinkle(theta, t) / 0.25; // relativo al radio medio
 
   if (t <= YOKE_START) {

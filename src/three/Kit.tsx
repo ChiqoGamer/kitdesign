@@ -17,9 +17,9 @@ import { getFabricNormalMap, getFabricRoughnessMap } from "./fabricNormal";
  * pequeño espacio — como se presenta un kit en los juegos.
  */
 export const KIT_LAYOUT: Record<GarmentId, { y: number; z: number }> = {
-  jersey: { y: 0.08, z: 0 },
-  shorts: { y: -0.26, z: -0.012 },
-  socks: { y: -0.87, z: 0.01 },
+  jersey: { y: 0.12, z: 0 },
+  shorts: { y: -0.24, z: -0.008 },
+  socks: { y: -0.73, z: 0 },
 };
 
 /**
