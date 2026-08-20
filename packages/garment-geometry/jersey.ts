@@ -41,9 +41,11 @@ import { lerp, noise2, profileAt, smoothstep, superellipse } from "./math";
 const N_THETA = 128; // divisiones alrededor del cuerpo (par, para partir en 2)
 const N_BODY = 30; // filas del tubo
 const N_YOKE = 14; // filas del canesú
-const SUPER_N = 2.15;
+const SUPER_N = 2.06;
 
 const HEM_Y = 0;
+/** Caída del ruedo en los laterales (shirt-tail sutil), en metros. */
+const HEM_SIDE_DROP = 0.012;
 const RIM_Y = 0.665; // borde superior del tubo (línea de hombro)
 const NECK_Y = 0.688;
 const NECK_Z = 0.012; // el escote está levemente adelantado
@@ -55,7 +57,7 @@ const YOKE_START = N_BODY / (N_BODY + N_YOKE);
  * horizontal y la prenda parece una caja: el hombro real baja hacia la
  * sisa, y es esa pendiente la que hace que la manga calce sin muesca.
  */
-const SHOULDER_SLOPE = 0.045;
+const SHOULDER_SLOPE = 0.058;
 
 /** Ancho (semieje X) del torso a lo largo de la altura. */
 const WIDTH_PROFILE: [number, number][] = [
@@ -69,8 +71,8 @@ const WIDTH_PROFILE: [number, number][] = [
 const DEPTH_PROFILE: [number, number][] = [
   [0.0, 0.132],
   [0.30, 0.121],
-  [0.68, 0.163],
-  [1.0, 0.146],
+  [0.68, 0.155],
+  [1.0, 0.14],
 ];
 
 interface NeckShape {
@@ -90,14 +92,14 @@ const NECK_SHAPES: Record<CollarKind, NeckShape> = {
 /** Extensión horizontal desde la sisa, en metros. */
 const SLEEVE_LENGTH: Record<SleeveKind, number> = {
   sleeveless: 0.085,
-  short: 0.168,
+  short: 0.178,
   long: 0.42,
 };
 
 const SLEEVE_DROP: Record<SleeveKind, number> = {
   sleeveless: 0.05,
-  short: 0.13,
-  long: 0.34,
+  short: 0.16,
+  long: 0.36,
 };
 
 // ---------------------------------------------------------------------------
@@ -167,7 +169,7 @@ function torsoPoint(
     const d = profileAt(u, DEPTH_PROFILE);
     return out.set(
       w * sx * disp,
-      lerp(HEM_Y, rimY(theta, shape), u),
+      lerp(HEM_Y - HEM_SIDE_DROP * Math.cos(theta) * Math.cos(theta), rimY(theta, shape), u),
       d * sz * disp,
     );
   }
@@ -269,10 +271,10 @@ function emitSleeve(
   const rootZ = 0.0;
 
   const isLong = kind === "long";
-  const rootUp = 0.122; // semieje vertical de la sisa
-  const rootSide = 0.079; // semieje horizontal
-  const cuffUp = isLong ? 0.059 : 0.084;
-  const cuffSide = isLong ? 0.056 : 0.08;
+  const rootUp = 0.116; // semieje vertical de la sisa
+  const rootSide = 0.075; // semieje horizontal
+  const cuffUp = isLong ? 0.055 : 0.07;
+  const cuffSide = isLong ? 0.052 : 0.066;
 
   const center = (k: number, out: THREE.Vector3) =>
     out.set(
