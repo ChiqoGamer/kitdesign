@@ -75,7 +75,8 @@ export function remapToAtlas(geo: THREE.BufferGeometry): void {
  */
 export function prepareRefGeometry(
   source: THREE.Object3D,
-  targetHeight = 0.66,
+  /** Igual que la procedural (NECK_Y), para compartir el layout del kit. */
+  targetHeight = 0.688,
 ): THREE.BufferGeometry {
   const meshes: THREE.Mesh[] = [];
   source.traverse((o) => {
@@ -104,13 +105,20 @@ export function prepareRefGeometry(
 
   remapToAtlas(geo);
 
+  /**
+   * Se alinea a la MISMA convención que la geometría procedural: origen en
+   * el ruedo (y=0), centrada en X/Z. El layout del kit (KIT_LAYOUT) está
+   * calibrado para eso; centrar en el origen hacía que la camiseta colgara
+   * media altura hacia abajo y pisara el short.
+   */
   geo.computeBoundingBox();
   const box = geo.boundingBox!;
   const size = new THREE.Vector3();
   const center = new THREE.Vector3();
   box.getSize(size);
   box.getCenter(center);
-  geo.translate(-center.x, -center.y, -center.z);
+  geo.translate(-center.x, -box.min.y, -center.z);
+  // Escalar después de bajar el ruedo al origen lo mantiene en y=0.
   const scale = targetHeight / size.y;
   geo.scale(scale, scale, scale);
 
