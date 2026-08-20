@@ -25,6 +25,11 @@ export function applyAction(state: DesignState, action: Action): ApplyResult {
           draft.kit.zones[action.zone].pattern = action.pattern;
           break;
         }
+        case "TOGGLE_ZONE": {
+          const z = draft.kit.zones[action.zone];
+          z.hidden = !z.hidden;
+          break;
+        }
         case "SET_ZONE_COLOR": {
           draft.kit.zones[action.zone].colors[action.slot] = action.color;
           break;

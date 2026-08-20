@@ -106,6 +106,8 @@ export interface ZoneFill {
   /** [base, secundario, terciario] — los patrones usan los que necesitan. */
   colors: [ColorRef, ColorRef, ColorRef];
   params: PatternParams;
+  /** Oculta la zona en el render (deja ver el color de fondo). */
+  hidden?: boolean;
 }
 
 export interface PaletteEntry {

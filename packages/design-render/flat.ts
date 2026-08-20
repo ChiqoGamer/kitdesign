@@ -118,6 +118,7 @@ function paintRegion(
   gu: [number, number],
 ) {
   const fill = state.kit.zones[zone];
+  if (fill.hidden) return;
   ctx.save();
   ctx.clip(region);
   const context: PaintContext = {

@@ -67,6 +67,7 @@ export function renderGarment(
 
   for (const piece of atlas.pieces) {
     const fill = state.kit.zones[piece.zone];
+    if (fill.hidden) continue; // zona oculta: queda el color de fondo
     const painter = PAINTERS[fill.pattern];
     const rect = toPixels(piece, px, BLEED);
 
