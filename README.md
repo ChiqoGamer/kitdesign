@@ -100,8 +100,16 @@ renderizadas con los colores del club, selección de zona clickeando el
 modelo 3D, foco de cámara por prenda, vista **Textura** (los moldes de
 corte en plano, con contorno y etiqueta), undo/redo.
 
-Pendiente inmediato: sistema de capas (gráficos, texto, escudo, sponsors),
-números y nombres, persistencia, export, y el agente de IA.
+**Sistema de capas** (hecho): sobre el patrón base de cada prenda se apilan
+capas — escudo, sponsors (subida de PNG/JPG/SVG), nombre y número. Cada
+capa se ancla a un punto conocido (pecho, espalda, manga, short) y guarda
+offset/escala/rotación relativos. Lista de capas con ojo/reordenar/borrar,
+editor de la capa seleccionada (texto, tipografía, colores, contorno,
+ubicación, ajuste fino). Las capas se componen en el mismo atlas que la
+textura 3D, así que aparecen igual en 3D, en la vista Textura y (a futuro)
+en el archivo de fabricación.
+
+Pendiente inmediato: persistencia, export/compartir, y el agente de IA.
 
 ### Deuda conocida
 

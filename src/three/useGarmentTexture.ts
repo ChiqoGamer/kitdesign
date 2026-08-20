@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import type { DesignState, GarmentId } from "@core/index";
 import { GARMENT_ATLASES } from "@geom/atlas";
 import { createAtlasCanvas, renderGarment } from "@render/canvas";
+import { onImagesReady } from "@render/images";
 
 /**
  * Mantiene una única CanvasTexture viva por prenda y la re-dibuja cuando
@@ -17,6 +18,11 @@ export function useGarmentTexture(
   revision: number,
   garment: GarmentId,
 ): THREE.CanvasTexture {
+  // Las imágenes de las capas (escudos, sponsors) cargan async. Cuando una
+  // termina, se fuerza un redibujo de la textura para que aparezca.
+  const [imgTick, setImgTick] = useState(0);
+  useEffect(() => onImagesReady(() => setImgTick((n) => n + 1)), []);
+
   const texture = useMemo(() => {
     const canvas = createAtlasCanvas(GARMENT_ATLASES[garment].size);
     const tex = new THREE.CanvasTexture(canvas);
@@ -33,7 +39,7 @@ export function useGarmentTexture(
     if (!ctx) return;
     renderGarment(ctx, design, garment);
     texture.needsUpdate = true;
-  }, [design, revision, garment, texture]);
+  }, [design, revision, garment, texture, imgTick]);
 
   useEffect(() => () => texture.dispose(), [texture]);
 

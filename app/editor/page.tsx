@@ -14,6 +14,7 @@ import { ZonePanel } from "@/src/editor/panels/ZonePanel";
 import { PalettePanel } from "@/src/editor/panels/PalettePanel";
 import { TemplatePanel } from "@/src/editor/panels/TemplatePanel";
 import { ConstructionPanel } from "@/src/editor/panels/ConstructionPanel";
+import { LayersPanel } from "@/src/editor/panels/LayersPanel";
 import { TextureView } from "@/src/editor/TextureView";
 import { IconButton } from "@/src/components/ui";
 import { VIEW_LABELS, type ViewName } from "@/src/three/Viewer";
@@ -33,6 +34,7 @@ const Viewer = dynamic(
 
 const SECTIONS = [
   { id: "zonas", label: "Diseño", icon: "M4 7h16M4 12h16M4 17h10" },
+  { id: "capas", label: "Escudo y sponsors", icon: "M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z" },
   { id: "plantillas", label: "Plantillas", icon: "M4 5h7v7H4zM13 5h7v4h-7zM13 13h7v6h-7zM4 16h7v3H4z" },
   { id: "colores", label: "Colores", icon: "M12 3a9 9 0 100 18h1a2 2 0 002-2 2 2 0 012-2h1a3 3 0 003-3 9 9 0 00-9-11z" },
   { id: "confeccion", label: "Confección", icon: "M6 4l6 5 6-5v16H6z" },
@@ -237,6 +239,7 @@ export default function EditorPage() {
         {/* ── Panel de propiedades ─────────────────────────────────── */}
         <aside className="min-h-0 overflow-y-auto border-l border-ink-700 bg-ink-850">
           {section === "zonas" ? <ZonePanel /> : null}
+          {section === "capas" ? <LayersPanel /> : null}
           {section === "plantillas" ? <TemplatePanel /> : null}
           {section === "colores" ? <PalettePanel /> : null}
           {section === "confeccion" ? <ConstructionPanel /> : null}

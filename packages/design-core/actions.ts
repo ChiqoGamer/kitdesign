@@ -6,6 +6,7 @@ import type {
   PatternParams,
   ZoneId,
 } from "./types";
+import type { AnchorId, FontId, Layer } from "./layers";
 
 /**
  * Toda mutación del diseño es una de estas acciones.
@@ -34,6 +35,17 @@ export type Action =
     }
   | { type: "SET_PALETTE_COLOR"; index: number; hex: string }
   | { type: "SET_META"; key: keyof DesignState["meta"]; value: string }
+  | { type: "ADD_LAYER"; layer: Layer }
+  | { type: "REMOVE_LAYER"; id: string }
+  | { type: "TOGGLE_LAYER"; id: string }
+  | { type: "REORDER_LAYER"; id: string; dir: -1 | 1 }
+  | { type: "MOVE_LAYER"; id: string; offset: { x: number; y: number } }
+  | { type: "SCALE_LAYER"; id: string; scale: number }
+  | { type: "ROTATE_LAYER"; id: string; rotation: number }
+  | { type: "SET_LAYER_ANCHOR"; id: string; anchor: AnchorId }
+  | { type: "SET_LAYER_TEXT"; id: string; text: string }
+  | { type: "SET_LAYER_COLOR"; id: string; slot: "color" | "outline"; color: ColorRef }
+  | { type: "SET_LAYER_FONT"; id: string; font: FontId }
   | { type: "LOAD_STATE"; state: DesignState };
 
 export type ActionType = Action["type"];
@@ -53,6 +65,28 @@ export function describeAction(action: Action): string {
       return "Paleta del club";
     case "SET_META":
       return "Datos del diseño";
+    case "ADD_LAYER":
+      return `Agregar ${action.layer.name}`;
+    case "REMOVE_LAYER":
+      return "Quitar capa";
+    case "TOGGLE_LAYER":
+      return "Mostrar/ocultar capa";
+    case "REORDER_LAYER":
+      return "Reordenar capa";
+    case "MOVE_LAYER":
+      return "Mover capa";
+    case "SCALE_LAYER":
+      return "Escalar capa";
+    case "ROTATE_LAYER":
+      return "Rotar capa";
+    case "SET_LAYER_ANCHOR":
+      return "Ubicación de capa";
+    case "SET_LAYER_TEXT":
+      return "Texto de capa";
+    case "SET_LAYER_COLOR":
+      return "Color de capa";
+    case "SET_LAYER_FONT":
+      return "Tipografía de capa";
     case "LOAD_STATE":
       return "Cargar diseño";
   }

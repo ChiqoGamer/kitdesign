@@ -48,6 +48,72 @@ export function applyAction(state: DesignState, action: Action): ApplyResult {
           draft.meta[action.key] = action.value as never;
           break;
         }
+        case "ADD_LAYER": {
+          draft.layers.push(action.layer);
+          break;
+        }
+        case "REMOVE_LAYER": {
+          const i = draft.layers.findIndex((l) => l.id === action.id);
+          if (i >= 0) draft.layers.splice(i, 1);
+          break;
+        }
+        case "TOGGLE_LAYER": {
+          const l = draft.layers.find((l) => l.id === action.id);
+          if (l) l.visible = !l.visible;
+          break;
+        }
+        case "REORDER_LAYER": {
+          const i = draft.layers.findIndex((l) => l.id === action.id);
+          const j = i + action.dir;
+          if (i >= 0 && j >= 0 && j < draft.layers.length) {
+            const [l] = draft.layers.splice(i, 1);
+            draft.layers.splice(j, 0, l);
+          }
+          break;
+        }
+        case "MOVE_LAYER": {
+          const l = draft.layers.find((l) => l.id === action.id);
+          if (l) l.offset = action.offset;
+          break;
+        }
+        case "SCALE_LAYER": {
+          const l = draft.layers.find((l) => l.id === action.id);
+          if (l) l.scale = Math.min(4, Math.max(0.15, action.scale));
+          break;
+        }
+        case "ROTATE_LAYER": {
+          const l = draft.layers.find((l) => l.id === action.id);
+          if (l) l.rotation = action.rotation;
+          break;
+        }
+        case "SET_LAYER_ANCHOR": {
+          const l = draft.layers.find((l) => l.id === action.id);
+          if (l) {
+            l.anchor = action.anchor;
+            l.offset = { x: 0, y: 0 };
+          }
+          break;
+        }
+        case "SET_LAYER_TEXT": {
+          const l = draft.layers.find((l) => l.id === action.id);
+          if (l && l.kind === "text") l.text = action.text;
+          else if (l && l.kind === "number") l.value = action.text;
+          break;
+        }
+        case "SET_LAYER_COLOR": {
+          const l = draft.layers.find((l) => l.id === action.id);
+          if (l && l.kind === "text") l.color = action.color;
+          else if (l && l.kind === "number") {
+            if (action.slot === "outline") l.outline = action.color;
+            else l.color = action.color;
+          }
+          break;
+        }
+        case "SET_LAYER_FONT": {
+          const l = draft.layers.find((l) => l.id === action.id);
+          if (l && (l.kind === "text" || l.kind === "number")) l.font = action.font;
+          break;
+        }
         case "LOAD_STATE": {
           return action.state;
         }

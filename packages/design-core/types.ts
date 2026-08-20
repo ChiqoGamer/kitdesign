@@ -143,6 +143,8 @@ export interface KitConstruction {
   sleeve: SleeveKind;
 }
 
+import type { Layer } from "./layers";
+
 export interface DesignState {
   schema: 1;
   meta: {
@@ -155,6 +157,8 @@ export interface DesignState {
     construction: KitConstruction;
     zones: Record<ZoneId, ZoneFill>;
   };
+  /** Capas apiladas sobre el patrón base: escudo, sponsors, nombre, número. */
+  layers: Layer[];
 }
 
 /** Resuelve una ColorRef contra la paleta del diseño. */

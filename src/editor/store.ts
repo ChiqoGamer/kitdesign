@@ -6,10 +6,12 @@ import {
   applyAction,
   createDefaultDesign,
   describeAction,
+  layerGarment,
   ZONE_GARMENT,
   type Action,
   type DesignState,
   type GarmentId,
+  type Layer,
   type Patch,
   type ZoneId,
 } from "@core/index";
@@ -34,6 +36,14 @@ function coalesceKeyOf(action: Action): string | null {
       return `palette:${action.index}`;
     case "SET_ZONE_COLOR":
       return `color:${action.zone}:${action.slot}`;
+    case "MOVE_LAYER":
+      return `move:${action.id}`;
+    case "SCALE_LAYER":
+      return `scale:${action.id}`;
+    case "ROTATE_LAYER":
+      return `rotate:${action.id}`;
+    case "SET_LAYER_TEXT":
+      return `text:${action.id}`;
     default:
       return null;
   }
@@ -49,6 +59,8 @@ interface EditorStore {
   section: string;
   /** Qué se muestra/encuadra en el visor: una prenda o el kit completo. */
   focus: GarmentId | "all";
+  /** Capa seleccionada para editar sus propiedades. */
+  selectedLayerId: string | null;
 
   dispatch: (action: Action) => void;
   undo: () => void;
@@ -56,6 +68,9 @@ interface EditorStore {
   selectZone: (zone: ZoneId) => void;
   setSection: (section: string) => void;
   setFocus: (focus: GarmentId | "all") => void;
+  selectLayer: (id: string | null) => void;
+  /** Agrega una capa y la deja seleccionada, enfocando su prenda. */
+  addLayer: (layer: Layer) => void;
   applyTemplate: (slug: string) => void;
 }
 
@@ -67,6 +82,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
   selectedZone: "body",
   section: "zonas",
   focus: "all",
+  selectedLayerId: null,
 
   dispatch(action) {
     const { design, past } = get();
@@ -136,6 +152,11 @@ export const useEditor = create<EditorStore>((set, get) => ({
   },
   setSection: (section) => set({ section }),
   setFocus: (focus) => set({ focus }),
+  selectLayer: (id) => set({ selectedLayerId: id }),
+  addLayer(layer) {
+    get().dispatch({ type: "ADD_LAYER", layer });
+    set({ selectedLayerId: layer.id, focus: layerGarment(layer) });
+  },
 
   applyTemplate(slug) {
     const template = TEMPLATES.find((t) => t.slug === slug);
@@ -149,3 +170,8 @@ export const useEditor = create<EditorStore>((set, get) => ({
     });
   },
 }));
+
+// Dev: acceso al store desde la consola para pruebas (inyectar capas, etc.).
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  (window as unknown as { __editor?: unknown }).__editor = useEditor;
+}

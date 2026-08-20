@@ -38,6 +38,7 @@ export function createDefaultDesign(): DesignState {
         }),
       },
     },
+    layers: [],
   };
 }
 
