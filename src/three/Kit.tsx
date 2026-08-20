@@ -6,6 +6,8 @@ import type { ThreeEvent } from "@react-three/fiber";
 import type { DesignState, GarmentId, ZoneId } from "@core/index";
 import { GARMENT_ATLASES } from "@geom/atlas";
 import { buildJerseyGeometry } from "@geom/jersey";
+import { useGLTF } from "@react-three/drei";
+import { prepareRefGeometry } from "./refJersey";
 import { buildShortsGeometry } from "@geom/shorts";
 import { buildSocksGeometry } from "@geom/socks";
 import { useGarmentTexture } from "./useGarmentTexture";
@@ -108,27 +110,39 @@ function GarmentMesh({
 
 export type KitFocus = GarmentId | "all";
 
+const REF_MODEL_URL = "/models/jersey-ref.glb";
+
 interface Props {
   design: DesignState;
   revision: number;
   focus: KitFocus;
+  /** true = malla de referencia (GLB); false = geometría procedural. */
+  refMesh?: boolean;
   onPickZone?: (zone: ZoneId) => void;
   onHoverZone?: (zone: ZoneId | null) => void;
 }
 
-export function Kit({ design, revision, focus, onPickZone, onHoverZone }: Props) {
+export function Kit({ design, revision, focus, refMesh = false, onPickZone, onHoverZone }: Props) {
   const { collar, sleeve } = design.kit.construction;
 
   // La geometría de la camiseta sólo se reconstruye cuando cambia la
   // confección; short y medias son fijas. Los colores los absorbe la textura.
-  const jerseyGeo = useMemo(
+  // Malla de referencia (GLB del editor open source), con sus UVs
+  // remapeadas a nuestro atlas. Se carga siempre para que el toggle sea
+  // instantáneo; useGLTF cachea.
+  const { scene: refScene } = useGLTF(REF_MODEL_URL);
+  const refGeo = useMemo(() => prepareRefGeometry(refScene), [refScene]);
+
+  const proceduralGeo = useMemo(
     () => buildJerseyGeometry({ collar, sleeve }),
     [collar, sleeve],
   );
   const shortsGeo = useMemo(() => buildShortsGeometry(), []);
   const socksGeo = useMemo(() => buildSocksGeometry(), []);
 
-  useEffect(() => () => jerseyGeo.dispose(), [jerseyGeo]);
+  useEffect(() => () => proceduralGeo.dispose(), [proceduralGeo]);
+  useEffect(() => () => refGeo.dispose(), [refGeo]);
+
   useEffect(() => () => shortsGeo.dispose(), [shortsGeo]);
   useEffect(() => () => socksGeo.dispose(), [socksGeo]);
 
@@ -137,9 +151,16 @@ export function Kit({ design, revision, focus, onPickZone, onHoverZone }: Props)
 
   return (
     <group position={[0, 0.02, 0]}>
-      <GarmentMesh {...common} garment="jersey" geometry={jerseyGeo} visible={show("jersey")} />
+      <GarmentMesh
+        {...common}
+        garment="jersey"
+        geometry={refMesh ? refGeo : proceduralGeo}
+        visible={show("jersey")}
+      />
       <GarmentMesh {...common} garment="shorts" geometry={shortsGeo} visible={show("shorts")} />
       <GarmentMesh {...common} garment="socks" geometry={socksGeo} visible={show("socks")} />
     </group>
   );
 }
+
+useGLTF.preload(REF_MODEL_URL);

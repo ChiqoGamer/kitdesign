@@ -126,6 +126,8 @@ interface Props {
   view: ViewName;
   viewNonce: number;
   focus: KitFocus;
+  /** Usar la malla de referencia (GLB) en vez de la procedural. */
+  refMesh?: boolean;
   onPickZone: (zone: ZoneId) => void;
   onHoverZone: (zone: ZoneId | null) => void;
 }
@@ -133,6 +135,7 @@ interface Props {
 export function Viewer({
   design,
   revision,
+  refMesh,
   view,
   viewNonce,
   focus,
@@ -173,6 +176,7 @@ export function Viewer({
       </Suspense>
 
       <Kit
+        refMesh={refMesh}
         design={design}
         revision={revision}
         focus={focus}

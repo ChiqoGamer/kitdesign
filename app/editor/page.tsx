@@ -63,6 +63,7 @@ export default function EditorPage() {
   const [view, setView] = useState<ViewName>("front");
   const [viewNonce, setViewNonce] = useState(0);
   const [hovered, setHovered] = useState<ZoneId | null>(null);
+  const [refMesh, setRefMesh] = useState(true);
 
   const goToView = (v: ViewName) => {
     setView(v);
@@ -196,6 +197,7 @@ export default function EditorPage() {
           {mode === "3d" ? (
             <>
               <Viewer
+                refMesh={refMesh}
                 design={design}
                 revision={revision}
                 view={view}
@@ -227,8 +229,21 @@ export default function EditorPage() {
                 ))}
               </div>
 
-              <div className="pointer-events-none absolute bottom-5 right-5 text-[11px] text-ink-600">
-                Arrastrá para rotar · rueda para zoom
+              <div className="absolute bottom-5 right-5 flex items-center gap-3">
+                <button
+                  onClick={() => setRefMesh((v) => !v)}
+                  className={`rounded-md border px-2.5 py-1.5 text-[11px] transition-colors ${
+                    refMesh
+                      ? "border-accent/60 bg-accent/10 text-accent"
+                      : "border-ink-700 text-ink-400 hover:text-ink-100"
+                  }`}
+                  title="Alternar entre la malla de referencia y la generada por código"
+                >
+                  {refMesh ? "Malla: referencia" : "Malla: procedural"}
+                </button>
+                <span className="pointer-events-none text-[11px] text-ink-600">
+                  Arrastrá para rotar · rueda para zoom
+                </span>
               </div>
             </>
           ) : mode === "flat" ? (
