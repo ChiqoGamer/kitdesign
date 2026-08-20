@@ -61,10 +61,10 @@ const SHOULDER_SLOPE = 0.058;
 
 /** Ancho (semieje X) del torso a lo largo de la altura. */
 const WIDTH_PROFILE: [number, number][] = [
-  [0.0, 0.234], // ruedo — leve campana
-  [0.30, 0.206], // cintura — claramente más angosta
-  [0.68, 0.258], // pecho — lo más ancho
-  [1.0, 0.222], // base del hombro
+  [0.0, 0.242], // ruedo — cae fuller, relajado
+  [0.34, 0.222], // cintura — apenas recogida (calce de partido, no reloj de arena)
+  [0.7, 0.256], // pecho — lo más ancho
+  [1.0, 0.224], // base del hombro
 ];
 
 /** Profundidad (semieje Z) del torso. */
