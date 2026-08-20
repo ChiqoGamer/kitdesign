@@ -11,15 +11,50 @@
 /** Un color es un hex literal ("#0057B8") o una referencia a la paleta ("palette:0"). */
 export type ColorRef = string;
 
-/** Zonas editables de la camiseta. Cada una mapea a piezas del patrón. */
-export type ZoneId = "body" | "sleeves" | "collar";
+/** Prendas del kit. Cada una es un mesh + un atlas de textura propios. */
+export type GarmentId = "jersey" | "shorts" | "socks";
 
-export const ZONE_IDS: ZoneId[] = ["body", "sleeves", "collar"];
+export const GARMENT_IDS: GarmentId[] = ["jersey", "shorts", "socks"];
+
+export const GARMENT_LABELS: Record<GarmentId, string> = {
+  jersey: "Camiseta",
+  shorts: "Short",
+  socks: "Medias",
+};
+
+/** Zonas editables del kit completo. Cada una mapea a piezas del patrón. */
+export type ZoneId = "body" | "sleeves" | "collar" | "shorts" | "socks";
+
+export const ZONE_IDS: ZoneId[] = [
+  "body",
+  "sleeves",
+  "collar",
+  "shorts",
+  "socks",
+];
 
 export const ZONE_LABELS: Record<ZoneId, string> = {
   body: "Cuerpo",
   sleeves: "Mangas",
   collar: "Cuello",
+  shorts: "Short",
+  socks: "Medias",
+};
+
+/** A qué prenda pertenece cada zona (para foco de cámara y vista 2D). */
+export const ZONE_GARMENT: Record<ZoneId, GarmentId> = {
+  body: "jersey",
+  sleeves: "jersey",
+  collar: "jersey",
+  shorts: "shorts",
+  socks: "socks",
+};
+
+/** Zonas de cada prenda, para armar la UI. */
+export const GARMENT_ZONES: Record<GarmentId, ZoneId[]> = {
+  jersey: ["body", "sleeves", "collar"],
+  shorts: ["shorts"],
+  socks: ["socks"],
 };
 
 /** Catálogo cerrado de patrones. La IA sólo puede elegir de acá. */
@@ -103,7 +138,7 @@ export const SLEEVE_LABELS: Record<SleeveKind, string> = {
  */
 export const SLEEVE_OPTIONS: SleeveKind[] = ["short", "long"];
 
-export interface JerseyConstruction {
+export interface KitConstruction {
   collar: CollarKind;
   sleeve: SleeveKind;
 }
@@ -116,8 +151,8 @@ export interface DesignState {
     kind: "HOME" | "AWAY" | "THIRD";
   };
   palette: PaletteEntry[];
-  jersey: {
-    construction: JerseyConstruction;
+  kit: {
+    construction: KitConstruction;
     zones: Record<ZoneId, ZoneFill>;
   };
 }

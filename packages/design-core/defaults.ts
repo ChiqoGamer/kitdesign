@@ -21,7 +21,7 @@ export function createDefaultDesign(): DesignState {
       { id: "p1", hex: "#FFFFFF", name: "Blanco" },
       { id: "p2", hex: "#E11D2E", name: "Rojo" },
     ],
-    jersey: {
+    kit: {
       construction: { collar: "crew", sleeve: "short" },
       zones: {
         body: fill("stripesV", ["palette:0", "palette:1", "palette:2"], {
@@ -30,6 +30,12 @@ export function createDefaultDesign(): DesignState {
         }),
         sleeves: fill("solid", ["palette:0", "palette:1", "palette:2"]),
         collar: fill("solid", ["palette:1", "palette:0", "palette:2"]),
+        shorts: fill("solid", ["palette:0", "palette:1", "palette:2"]),
+        socks: fill("stripesH", ["palette:0", "palette:1", "palette:2"], {
+          count: 3,
+          width: 0.28,
+          offset: 0.72,
+        }),
       },
     },
   };
@@ -44,7 +50,7 @@ export function createDefaultDesign(): DesignState {
 export interface Template {
   slug: string;
   name: string;
-  build: () => DesignState["jersey"];
+  build: () => DesignState["kit"];
 }
 
 export const TEMPLATES: Template[] = [
@@ -57,6 +63,8 @@ export const TEMPLATES: Template[] = [
         body: fill("solid", ["palette:0", "palette:1", "palette:2"]),
         sleeves: fill("solid", ["palette:0", "palette:1", "palette:2"]),
         collar: fill("solid", ["palette:1", "palette:0", "palette:2"]),
+        shorts: fill("solid", ["palette:0", "palette:1", "palette:2"]),
+        socks: fill("solid", ["palette:0", "palette:1", "palette:2"]),
       },
     }),
   },
@@ -72,6 +80,12 @@ export const TEMPLATES: Template[] = [
         }),
         sleeves: fill("solid", ["palette:0", "palette:1", "palette:2"]),
         collar: fill("solid", ["palette:1", "palette:0", "palette:2"]),
+        shorts: fill("solid", ["palette:1", "palette:0", "palette:2"]),
+        socks: fill("stripesH", ["palette:0", "palette:1", "palette:2"], {
+          count: 3,
+          width: 0.3,
+          offset: 0.7,
+        }),
       },
     }),
   },
@@ -88,6 +102,8 @@ export const TEMPLATES: Template[] = [
         }),
         sleeves: fill("solid", ["palette:0", "palette:1", "palette:2"]),
         collar: fill("solid", ["palette:2", "palette:1", "palette:0"]),
+        shorts: fill("solid", ["palette:0", "palette:2", "palette:1"]),
+        socks: fill("solid", ["palette:0", "palette:2", "palette:1"]),
       },
     }),
   },
@@ -106,6 +122,11 @@ export const TEMPLATES: Template[] = [
           width: 0.5,
         }),
         collar: fill("solid", ["palette:1", "palette:0", "palette:2"]),
+        shorts: fill("solid", ["palette:1", "palette:0", "palette:2"]),
+        socks: fill("stripesH", ["palette:1", "palette:0", "palette:2"], {
+          count: 4,
+          width: 0.5,
+        }),
       },
     }),
   },
@@ -122,6 +143,10 @@ export const TEMPLATES: Template[] = [
           position: 0.5,
         }),
         collar: fill("solid", ["palette:1", "palette:0", "palette:2"]),
+        shorts: fill("halves", ["palette:2", "palette:0", "palette:1"], {
+          position: 0.5,
+        }),
+        socks: fill("solid", ["palette:0", "palette:2", "palette:1"]),
       },
     }),
   },
@@ -136,6 +161,10 @@ export const TEMPLATES: Template[] = [
         }),
         sleeves: fill("solid", ["palette:2", "palette:1", "palette:0"]),
         collar: fill("solid", ["palette:1", "palette:0", "palette:2"]),
+        shorts: fill("gradient", ["palette:0", "palette:2", "palette:1"], {
+          position: 0.4,
+        }),
+        socks: fill("solid", ["palette:2", "palette:1", "palette:0"]),
       },
     }),
   },

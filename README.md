@@ -92,13 +92,16 @@ sale exacto en vez de depender de un unwrap manual.
 
 ## Estado actual
 
-Hecho: núcleo de estado + historial con fusión de acciones, geometría de
-camiseta (cuello redondo/V, manga corta/larga), 6 patrones paramétricos por
-zona, paleta de club, plantillas renderizadas con los colores del club,
-selección de zona clickeando el modelo 3D, undo/redo.
+Hecho: núcleo de estado + historial con fusión de acciones, **equipación
+completa** (camiseta con cuello redondo/V y manga corta/larga, short y
+medias paramétricos, cada prenda con su propio atlas y textura), 6 patrones
+paramétricos por zona (5 zonas), paleta de club, plantillas del kit entero
+renderizadas con los colores del club, selección de zona clickeando el
+modelo 3D, foco de cámara por prenda, vista **Textura** (los moldes de
+corte en plano, con contorno y etiqueta), undo/redo.
 
-Pendiente inmediato: short y medias, escudo y sponsors, números y nombres,
-persistencia, export, y el agente de IA.
+Pendiente inmediato: sistema de capas (gráficos, texto, escudo, sponsors),
+números y nombres, persistencia, export, y el agente de IA.
 
 ### Deuda conocida
 

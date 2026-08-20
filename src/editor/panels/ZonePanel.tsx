@@ -23,8 +23,8 @@ export function ZonePanel() {
   const selectZone = useEditor((s) => s.selectZone);
   const dispatch = useEditor((s) => s.dispatch);
 
-  const fill = design.jersey.zones[zone];
-  const resolved = fill.colors.map((c) => resolveColor(design, c));
+  const fill = design.kit.zones[zone];
+  const resolved = fill.colors.map((c: string) => resolveColor(design, c));
   const colorCount = PATTERN_COLOR_COUNT[fill.pattern] ?? 1;
   const paramKeys = PATTERN_PARAM_KEYS[fill.pattern] ?? [];
 

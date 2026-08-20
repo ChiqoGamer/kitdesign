@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { TEMPLATES, type DesignState, type Template } from "@core/index";
 import { PIECE_BY_ID } from "@geom/atlas";
-import { createAtlasCanvas, renderDesign } from "@render/canvas";
+import { createAtlasCanvas, renderGarment } from "@render/canvas";
 import { useEditor } from "../store";
 import { PanelSection } from "@/src/components/ui";
 
@@ -36,7 +36,12 @@ function TemplateThumb({
     const off = createAtlasCanvas(THUMB_ATLAS);
     const offCtx = off.getContext("2d");
     if (!offCtx) return;
-    renderDesign(offCtx, { ...design, jersey: template.build() }, THUMB_ATLAS);
+    renderGarment(
+      offCtx,
+      { ...design, kit: template.build() },
+      "jersey",
+      THUMB_ATLAS,
+    );
 
     // Se recorta sólo el delantero del atlas.
     const r = PIECE_BY_ID.front.rect;

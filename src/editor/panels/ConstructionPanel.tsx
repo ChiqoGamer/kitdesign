@@ -11,7 +11,7 @@ import { useEditor } from "../store";
 import { PanelSection, SegmentedControl } from "@/src/components/ui";
 
 export function ConstructionPanel() {
-  const construction = useEditor((s) => s.design.jersey.construction);
+  const construction = useEditor((s) => s.design.kit.construction);
   const dispatch = useEditor((s) => s.dispatch);
 
   return (

@@ -2,12 +2,19 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
-import { ZONE_LABELS, type ZoneId } from "@core/index";
+import {
+  GARMENT_IDS,
+  GARMENT_LABELS,
+  ZONE_LABELS,
+  type GarmentId,
+  type ZoneId,
+} from "@core/index";
 import { useEditor } from "@/src/editor/store";
 import { ZonePanel } from "@/src/editor/panels/ZonePanel";
 import { PalettePanel } from "@/src/editor/panels/PalettePanel";
 import { TemplatePanel } from "@/src/editor/panels/TemplatePanel";
 import { ConstructionPanel } from "@/src/editor/panels/ConstructionPanel";
+import { TextureView } from "@/src/editor/TextureView";
 import { IconButton } from "@/src/components/ui";
 import { VIEW_LABELS, type ViewName } from "@/src/three/Viewer";
 
@@ -31,17 +38,27 @@ const SECTIONS = [
   { id: "confeccion", label: "Confección", icon: "M6 4l6 5 6-5v16H6z" },
 ];
 
+const FOCUS_TABS: { id: GarmentId | "all"; label: string }[] = [
+  { id: "all", label: "Equipación" },
+  ...GARMENT_IDS.map((g) => ({ id: g, label: GARMENT_LABELS[g] })),
+];
+
+type Mode = "3d" | "texture";
+
 export default function EditorPage() {
   const design = useEditor((s) => s.design);
   const revision = useEditor((s) => s.revision);
   const section = useEditor((s) => s.section);
   const setSection = useEditor((s) => s.setSection);
   const selectZone = useEditor((s) => s.selectZone);
+  const focus = useEditor((s) => s.focus);
+  const setFocus = useEditor((s) => s.setFocus);
   const undo = useEditor((s) => s.undo);
   const redo = useEditor((s) => s.redo);
   const canUndo = useEditor((s) => s.past.length > 0);
   const canRedo = useEditor((s) => s.future.length > 0);
 
+  const [mode, setMode] = useState<Mode>("3d");
   const [view, setView] = useState<ViewName>("front");
   const [viewNonce, setViewNonce] = useState(0);
   const [hovered, setHovered] = useState<ZoneId | null>(null);
@@ -87,6 +104,28 @@ export default function EditorPage() {
           <span className="text-ink-100">{design.meta.name}</span>
         </div>
 
+        {/* Modo 3D / Textura, como los tabs de la referencia */}
+        <div className="ml-6 flex gap-1 rounded-lg bg-ink-800 p-1">
+          {(
+            [
+              { id: "3d", label: "3D" },
+              { id: "texture", label: "Textura" },
+            ] as { id: Mode; label: string }[]
+          ).map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setMode(m.id)}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                mode === m.id
+                  ? "bg-ink-600 text-ink-50"
+                  : "text-ink-400 hover:text-ink-100"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
         <div className="ml-auto flex items-center gap-1">
           <IconButton onClick={undo} disabled={!canUndo} title="Deshacer (⌘Z)">
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -130,61 +169,69 @@ export default function EditorPage() {
             </button>
           ))}
 
-          <div className="mt-auto px-4 pb-1 pt-4">
-            <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.13em] text-ink-500">
+          <div className="mt-auto px-2 pb-1 pt-4">
+            <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.13em] text-ink-500">
               Prenda
             </div>
-            <div className="rounded-md bg-ink-700 px-3 py-2 text-[13px] text-ink-50">
-              Camiseta
-            </div>
-            {["Short", "Medias"].map((g) => (
-              <div
-                key={g}
-                className="px-3 py-2 text-[13px] text-ink-600"
-                title="Próximamente"
+            {FOCUS_TABS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setFocus(t.id)}
+                className={`mb-0.5 block w-full rounded-md px-3 py-2 text-left text-[13px] transition-colors ${
+                  focus === t.id
+                    ? "bg-ink-700 text-ink-50"
+                    : "text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+                }`}
               >
-                {g}
-              </div>
+                {t.label}
+              </button>
             ))}
           </div>
         </nav>
 
-        {/* ── Visor 3D ─────────────────────────────────────────────── */}
+        {/* ── Visor ────────────────────────────────────────────────── */}
         <main className="relative min-w-0 bg-ink-900">
-          <Viewer
-            design={design}
-            revision={revision}
-            view={view}
-            viewNonce={viewNonce}
-            onPickZone={selectZone}
-            onHoverZone={handleHover}
-          />
+          {mode === "3d" ? (
+            <>
+              <Viewer
+                design={design}
+                revision={revision}
+                view={view}
+                viewNonce={viewNonce}
+                focus={focus}
+                onPickZone={selectZone}
+                onHoverZone={handleHover}
+              />
 
-          {hovered ? (
-            <div className="pointer-events-none absolute left-1/2 top-5 -translate-x-1/2 rounded-full bg-ink-800/90 px-3 py-1 text-xs text-ink-100 backdrop-blur">
-              {ZONE_LABELS[hovered]} — clic para editar
-            </div>
-          ) : null}
+              {hovered ? (
+                <div className="pointer-events-none absolute left-1/2 top-5 -translate-x-1/2 rounded-full bg-ink-800/90 px-3 py-1 text-xs text-ink-100 backdrop-blur">
+                  {ZONE_LABELS[hovered]} — clic para editar
+                </div>
+              ) : null}
 
-          <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1 rounded-lg bg-ink-800/90 p-1 backdrop-blur">
-            {(Object.keys(VIEW_LABELS) as ViewName[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => goToView(v)}
-                className={`pointer-events-auto rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  view === v
-                    ? "bg-ink-600 text-ink-50"
-                    : "text-ink-400 hover:text-ink-100"
-                }`}
-              >
-                {VIEW_LABELS[v]}
-              </button>
-            ))}
-          </div>
+              <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1 rounded-lg bg-ink-800/90 p-1 backdrop-blur">
+                {(Object.keys(VIEW_LABELS) as ViewName[]).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => goToView(v)}
+                    className={`pointer-events-auto rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                      view === v
+                        ? "bg-ink-600 text-ink-50"
+                        : "text-ink-400 hover:text-ink-100"
+                    }`}
+                  >
+                    {VIEW_LABELS[v]}
+                  </button>
+                ))}
+              </div>
 
-          <div className="pointer-events-none absolute bottom-5 right-5 text-[11px] text-ink-600">
-            Arrastrá para rotar · rueda para zoom
-          </div>
+              <div className="pointer-events-none absolute bottom-5 right-5 text-[11px] text-ink-600">
+                Arrastrá para rotar · rueda para zoom
+              </div>
+            </>
+          ) : (
+            <TextureView design={design} revision={revision} />
+          )}
         </main>
 
         {/* ── Panel de propiedades ─────────────────────────────────── */}

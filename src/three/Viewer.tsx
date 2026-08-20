@@ -3,9 +3,14 @@
 import { Suspense, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, Environment, Lightformer, OrbitControls } from "@react-three/drei";
+import {
+  ContactShadows,
+  Environment,
+  Lightformer,
+  OrbitControls,
+} from "@react-three/drei";
 import type { DesignState, ZoneId } from "@core/index";
-import { Jersey } from "./Jersey";
+import { Kit, type KitFocus } from "./Kit";
 
 export type ViewName = "front" | "back" | "left" | "right";
 
@@ -23,34 +28,62 @@ const AZIMUTH: Record<ViewName, number> = {
   left: -Math.PI / 2,
 };
 
-const RADIUS = 1.86;
-const ELEVATION = 0.1;
+/** Encuadre por prenda: a qué altura mirar y desde qué distancia. */
+const FRAMING: Record<KitFocus, { targetY: number; radius: number }> = {
+  all: { targetY: 0, radius: 3.3 },
+  jersey: { targetY: 0.47, radius: 1.9 },
+  shorts: { targetY: -0.02, radius: 1.4 },
+  socks: { targetY: -0.6, radius: 1.45 },
+};
 
-function positionFor(view: ViewName): THREE.Vector3 {
+const ELEVATION = 0.09;
+
+function positionFor(view: ViewName, focus: KitFocus): THREE.Vector3 {
   const az = AZIMUTH[view];
+  const { targetY, radius } = FRAMING[focus];
   return new THREE.Vector3(
-    RADIUS * Math.sin(az) * Math.cos(ELEVATION),
-    RADIUS * Math.sin(ELEVATION),
-    RADIUS * Math.cos(az) * Math.cos(ELEVATION),
+    radius * Math.sin(az) * Math.cos(ELEVATION),
+    targetY + radius * Math.sin(ELEVATION),
+    radius * Math.cos(az) * Math.cos(ELEVATION),
   );
 }
 
-/** Interpola la cámara hacia la vista pedida en vez de saltar. */
-function ViewController({ view, nonce }: { view: ViewName; nonce: number }) {
-  const controls = useThree((s) => s.controls) as { update?: () => void } | null;
-  const target = useRef<THREE.Vector3 | null>(null);
+/** Interpola cámara y target hacia la vista/foco pedidos en vez de saltar. */
+function ViewController({
+  view,
+  focus,
+  nonce,
+}: {
+  view: ViewName;
+  focus: KitFocus;
+  nonce: number;
+}) {
+  const controls = useThree((s) => s.controls) as
+    | { target?: THREE.Vector3; update?: () => void }
+    | null;
+  const goal = useRef<{ pos: THREE.Vector3; target: THREE.Vector3 } | null>(
+    null,
+  );
 
   useEffect(() => {
-    target.current = positionFor(view);
-  }, [view, nonce]);
+    goal.current = {
+      pos: positionFor(view, focus),
+      target: new THREE.Vector3(0, FRAMING[focus].targetY, 0),
+    };
+  }, [view, focus, nonce]);
 
   useFrame((state, delta) => {
-    const goal = target.current;
-    if (!goal) return;
-    state.camera.position.lerp(goal, 1 - Math.pow(0.0015, delta));
-    state.camera.lookAt(0, 0, 0);
-    controls?.update?.();
-    if (state.camera.position.distanceTo(goal) < 0.004) target.current = null;
+    const g = goal.current;
+    if (!g) return;
+    const k = 1 - Math.pow(0.0015, delta);
+    state.camera.position.lerp(g.pos, k);
+    if (controls?.target) {
+      controls.target.lerp(g.target, k);
+      controls.update?.();
+    } else {
+      state.camera.lookAt(g.target);
+    }
+    if (state.camera.position.distanceTo(g.pos) < 0.004) goal.current = null;
   });
 
   return null;
@@ -60,6 +93,9 @@ function ViewController({ view, nonce }: { view: ViewName; nonce: number }) {
  * Entorno de iluminación construido con Lightformers en vez de un HDRI
  * descargado: se genera localmente, así que el editor no depende de una
  * CDN externa ni tiene un salto visual al cargar.
+ *
+ * OJO: <Environment> suspende — sin el <Suspense> propio del caller,
+ * ningún hijo del <Canvas> monta y la escena queda negra sin error.
  */
 function Studio() {
   return (
@@ -89,6 +125,7 @@ interface Props {
   revision: number;
   view: ViewName;
   viewNonce: number;
+  focus: KitFocus;
   onPickZone: (zone: ZoneId) => void;
   onHoverZone: (zone: ZoneId | null) => void;
 }
@@ -98,6 +135,7 @@ export function Viewer({
   revision,
   view,
   viewNonce,
+  focus,
   onPickZone,
   onHoverZone,
 }: Props) {
@@ -105,7 +143,7 @@ export function Viewer({
     <Canvas
       shadows
       dpr={[1, 2]}
-      camera={{ position: [0, 0.19, RADIUS], fov: 30 }}
+      camera={{ position: [0, 0.05, 3.3], fov: 30 }}
       gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
       onCreated={({ gl }) => {
         // Exposición < 1: con ACES y un entorno de estudio, el default quema
@@ -122,41 +160,42 @@ export function Viewer({
         shadow-mapSize={[1024, 1024]}
         shadow-camera-near={0.5}
         shadow-camera-far={6}
-        shadow-camera-left={-1}
-        shadow-camera-right={1}
-        shadow-camera-top={1}
-        shadow-camera-bottom={-1}
+        shadow-camera-left={-1.4}
+        shadow-camera-right={1.4}
+        shadow-camera-top={1.4}
+        shadow-camera-bottom={-1.4}
       />
       <Suspense fallback={null}>
         <Studio />
       </Suspense>
 
-      <Jersey
+      <Kit
         design={design}
         revision={revision}
+        focus={focus}
         onPickZone={onPickZone}
         onHoverZone={onHoverZone}
       />
 
       <ContactShadows
-        position={[0, -0.4, 0]}
-        opacity={0.5}
-        scale={2.2}
+        position={[0, -1.42, 0]}
+        opacity={0.45}
+        scale={3}
         blur={2.6}
-        far={1.2}
+        far={1.4}
       />
 
       <OrbitControls
         makeDefault
         enablePan={false}
-        minDistance={0.75}
-        maxDistance={2.4}
-        minPolarAngle={Math.PI * 0.18}
-        maxPolarAngle={Math.PI * 0.82}
+        minDistance={0.7}
+        maxDistance={3.6}
+        minPolarAngle={Math.PI * 0.15}
+        maxPolarAngle={Math.PI * 0.85}
         enableDamping
         dampingFactor={0.08}
       />
-      <ViewController view={view} nonce={viewNonce} />
+      <ViewController view={view} focus={focus} nonce={viewNonce} />
     </Canvas>
   );
 }

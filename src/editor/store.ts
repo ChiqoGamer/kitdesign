@@ -6,8 +6,10 @@ import {
   applyAction,
   createDefaultDesign,
   describeAction,
+  ZONE_GARMENT,
   type Action,
   type DesignState,
+  type GarmentId,
   type Patch,
   type ZoneId,
 } from "@core/index";
@@ -45,12 +47,15 @@ interface EditorStore {
   future: HistoryEntry[];
   selectedZone: ZoneId;
   section: string;
+  /** Qué se muestra/encuadra en el visor: una prenda o el kit completo. */
+  focus: GarmentId | "all";
 
   dispatch: (action: Action) => void;
   undo: () => void;
   redo: () => void;
   selectZone: (zone: ZoneId) => void;
   setSection: (section: string) => void;
+  setFocus: (focus: GarmentId | "all") => void;
   applyTemplate: (slug: string) => void;
 }
 
@@ -61,6 +66,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
   future: [],
   selectedZone: "body",
   section: "zonas",
+  focus: "all",
 
   dispatch(action) {
     const { design, past } = get();
@@ -117,8 +123,19 @@ export const useEditor = create<EditorStore>((set, get) => ({
     });
   },
 
-  selectZone: (zone) => set({ selectedZone: zone, section: "zonas" }),
+  selectZone(zone) {
+    // Si el visor está enfocado en una prenda y se elige una zona de otra,
+    // el foco sigue a la zona: nunca se edita algo que no se ve.
+    const { focus } = get();
+    const garment = ZONE_GARMENT[zone];
+    set({
+      selectedZone: zone,
+      section: "zonas",
+      focus: focus === "all" || focus === garment ? focus : garment,
+    });
+  },
   setSection: (section) => set({ section }),
+  setFocus: (focus) => set({ focus }),
 
   applyTemplate(slug) {
     const template = TEMPLATES.find((t) => t.slug === slug);
@@ -128,7 +145,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
     // automáticamente con los colores del club.
     get().dispatch({
       type: "LOAD_STATE",
-      state: { ...design, jersey: template.build() },
+      state: { ...design, kit: template.build() },
     });
   },
 }));

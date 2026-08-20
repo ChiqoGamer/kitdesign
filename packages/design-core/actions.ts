@@ -1,7 +1,7 @@
 import type {
   ColorRef,
   DesignState,
-  JerseyConstruction,
+  KitConstruction,
   PatternId,
   PatternParams,
   ZoneId,
@@ -29,8 +29,8 @@ export type Action =
     }
   | {
       type: "SET_CONSTRUCTION";
-      key: keyof JerseyConstruction;
-      value: JerseyConstruction[keyof JerseyConstruction];
+      key: keyof KitConstruction;
+      value: KitConstruction[keyof KitConstruction];
     }
   | { type: "SET_PALETTE_COLOR"; index: number; hex: string }
   | { type: "SET_META"; key: keyof DesignState["meta"]; value: string }

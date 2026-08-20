@@ -22,21 +22,21 @@ export function applyAction(state: DesignState, action: Action): ApplyResult {
     (draft: DesignState) => {
       switch (action.type) {
         case "SET_ZONE_PATTERN": {
-          draft.jersey.zones[action.zone].pattern = action.pattern;
+          draft.kit.zones[action.zone].pattern = action.pattern;
           break;
         }
         case "SET_ZONE_COLOR": {
-          draft.jersey.zones[action.zone].colors[action.slot] = action.color;
+          draft.kit.zones[action.zone].colors[action.slot] = action.color;
           break;
         }
         case "SET_ZONE_PARAM": {
-          const params = draft.jersey.zones[action.zone].params;
+          const params = draft.kit.zones[action.zone].params;
           params[action.key] = clampParam(action.key, action.value);
           break;
         }
         case "SET_CONSTRUCTION": {
           // El cast es seguro: la union de Action ya restringe key/value.
-          (draft.jersey.construction[action.key] as string) = action.value;
+          (draft.kit.construction[action.key] as string) = action.value;
           break;
         }
         case "SET_PALETTE_COLOR": {
