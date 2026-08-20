@@ -8,7 +8,7 @@ import {
   type Accum,
   type Grid,
 } from "./surface";
-import { lerp, profileAt, smoothstep, superellipse } from "./math";
+import { lerp, noise2, profileAt, smoothstep, superellipse } from "./math";
 
 /**
  * GEOMETRÍA PARAMÉTRICA DE LA CAMISETA
@@ -130,6 +130,22 @@ function neckY(theta: number, shape: NeckShape): number {
   return NECK_Y - neckDrop(theta, shape);
 }
 
+/**
+ * Arrugas de tela: desplazamiento radial con ruido suave, alargado en
+ * vertical (los pliegues de una camiseta colgada caen a lo largo, no a lo
+ * ancho). Es lo que separa "globo perfecto" de "prenda": la silueta deja
+ * de ser una curva matemática. La amplitud se apaga hacia el canesú para
+ * que hombro y escote queden limpios, y sube un poco hacia el ruedo.
+ */
+function wrinkle(theta: number, t: number): number {
+  const around = theta / (Math.PI * 2);
+  const folds =
+    noise2(around * 9, t * 2.6) * 0.7 + noise2(around * 21, t * 5.2) * 0.3;
+  const envelope =
+    (1 - smoothstep((t - 0.55) / 0.32)) * (0.6 + 0.25 * (1 - t));
+  return folds * envelope * 0.006;
+}
+
 function torsoPoint(
   theta: number,
   t: number,
@@ -137,6 +153,7 @@ function torsoPoint(
   out: THREE.Vector3,
 ): THREE.Vector3 {
   const [sx, sz] = superellipse(theta, SUPER_N);
+  const disp = 1 + wrinkle(theta, t) / 0.25; // relativo al radio medio
 
   if (t <= YOKE_START) {
     // Tubo: de dobladillo a línea de hombro.
@@ -144,9 +161,9 @@ function torsoPoint(
     const w = profileAt(u, WIDTH_PROFILE);
     const d = profileAt(u, DEPTH_PROFILE);
     return out.set(
-      w * sx,
+      w * sx * disp,
       lerp(HEM_Y, rimY(theta, shape), u),
-      d * sz,
+      d * sz * disp,
     );
   }
 

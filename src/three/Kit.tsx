@@ -9,6 +9,7 @@ import { buildJerseyGeometry } from "@geom/jersey";
 import { buildShortsGeometry } from "@geom/shorts";
 import { buildSocksGeometry } from "@geom/socks";
 import { useGarmentTexture } from "./useGarmentTexture";
+import { getFabricNormalMap } from "./fabricNormal";
 
 /**
  * Disposición del kit completo en escena, estilo "equipación flotante":
@@ -87,6 +88,8 @@ function GarmentMesh({
     >
       <meshPhysicalMaterial
         map={texture}
+        normalMap={getFabricNormalMap()}
+        normalScale={new THREE.Vector2(0.4, 0.4)}
         side={THREE.DoubleSide}
         roughness={0.74}
         metalness={0}

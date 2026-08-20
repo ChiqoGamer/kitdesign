@@ -40,3 +40,24 @@ export function profileAt(u: number, points: [number, number][]): number {
   }
   return last[1];
 }
+
+function hash2(ix: number, iy: number): number {
+  const s = Math.sin(ix * 127.1 + iy * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+/**
+ * Ruido de valor 2D, suave y determinista (misma entrada → misma malla,
+ * requisito para que las UVs y los tests de snapshot sean estables).
+ */
+export function noise2(x: number, y: number): number {
+  const ix = Math.floor(x);
+  const iy = Math.floor(y);
+  const fx = smoothstep(x - ix);
+  const fy = smoothstep(y - iy);
+  const a = hash2(ix, iy);
+  const b = hash2(ix + 1, iy);
+  const c = hash2(ix, iy + 1);
+  const d = hash2(ix + 1, iy + 1);
+  return lerp(lerp(a, b, fx), lerp(c, d, fx), fy) - 0.5;
+}
