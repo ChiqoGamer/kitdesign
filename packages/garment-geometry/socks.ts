@@ -1,7 +1,13 @@
 import * as THREE from "three";
 import { PIECE_BY_ID } from "./atlas";
 import { lerp, profileAt, smoothstep } from "./math";
-import { emitPiece, newAccum, toBufferGeometry, type Grid } from "./surface";
+import {
+  emitPiece,
+  newAccum,
+  pushVertex,
+  toBufferGeometry,
+  type Grid,
+} from "./surface";
 
 /**
  * MEDIA PARAMÉTRICA
@@ -84,26 +90,21 @@ function sampleSock(side: 1 | -1): Grid {
 }
 
 function emitToeCap(
-  acc: { position: number[]; normal: number[]; uv: number[]; index: number[] },
+  acc: import("./surface").Accum,
   grid: Grid,
   rect: { x: number; y: number; w: number; h: number },
 ): void {
   const rim = grid.pos[grid.pos.length - 1];
-  const base = acc.position.length / 3;
   const c = new THREE.Vector3();
   for (const p of rim) c.add(p);
   c.divideScalar(rim.length);
-  acc.position.push(c.x, c.y, c.z);
-  acc.normal.push(0, 0, 1);
-  acc.uv.push(rect.x + rect.w / 2, rect.y + rect.h * 0.99);
+  const n = new THREE.Vector3(0, 0, 1);
+  const center = pushVertex(acc, c, n, rect.x + rect.w / 2, rect.y + rect.h * 0.99, 0.7);
   for (let j = 0; j < rim.length; j++) {
-    const p = rim[j];
-    acc.position.push(p.x, p.y, p.z);
-    acc.normal.push(0, 0, 1);
-    acc.uv.push(rect.x + rect.w / 2, rect.y + rect.h * 0.99);
+    pushVertex(acc, rim[j], n, rect.x + rect.w / 2, rect.y + rect.h * 0.99, 0.72);
   }
   for (let j = 0; j < rim.length - 1; j++) {
-    acc.index.push(base, base + 1 + j, base + 2 + j);
+    acc.index.push(center, center + 1 + j, center + 2 + j);
   }
 }
 

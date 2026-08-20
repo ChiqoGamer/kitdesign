@@ -15,11 +15,63 @@ export interface Accum {
   position: number[];
   normal: number[];
   uv: number[];
+  /** Oclusión ambiental horneada como color de vértice (gris). */
+  color: number[];
   index: number[];
 }
 
 export function newAccum(): Accum {
-  return { position: [], normal: [], uv: [], index: [] };
+  return { position: [], normal: [], uv: [], color: [], index: [] };
+}
+
+/**
+ * Oclusión ambiental por curvatura, calculada desde los vecinos de la
+ * rejilla. Es lo que le da profundidad a un render: los pliegues, el
+ * interior del cuello, la raíz de la manga y el ruedo se hunden y por lo
+ * tanto se oscurecen. Un vértice cóncavo (metido hacia adentro respecto de
+ * sus vecinos) recibe menos luz ambiente; uno convexo, apenas más.
+ *
+ * Se mide la componente del desplazamiento vértice→promedio-de-vecinos a lo
+ * largo de la normal, normalizada por el espaciado local para que sea
+ * independiente de la escala de la malla.
+ */
+function occlusionAt(
+  grid: Grid,
+  i: number,
+  col: number,
+  rows: number,
+  cols: number,
+): number {
+  const p = grid.pos[i][col];
+  const n = grid.nrm[i][col];
+  const neighbors: THREE.Vector3[] = [];
+  if (i > 0) neighbors.push(grid.pos[i - 1][col]);
+  if (i < rows) neighbors.push(grid.pos[i + 1][col]);
+  if (grid.pos[i][col - 1]) neighbors.push(grid.pos[i][col - 1]);
+  if (grid.pos[i][col + 1]) neighbors.push(grid.pos[i][col + 1]);
+  if (neighbors.length === 0) return 1;
+
+  let ax = 0;
+  let ay = 0;
+  let az = 0;
+  let spacing = 0;
+  for (const q of neighbors) {
+    ax += q.x;
+    ay += q.y;
+    az += q.z;
+    spacing += q.distanceTo(p);
+  }
+  const inv = 1 / neighbors.length;
+  ax = ax * inv - p.x;
+  ay = ay * inv - p.y;
+  az = az * inv - p.z;
+  spacing *= inv;
+  if (spacing < 1e-6) return 1;
+
+  // concavidad>0 cuando el vértice está hundido respecto de sus vecinos.
+  const concavity = (ax * n.x + ay * n.y + az * n.z) / spacing;
+  const ao = 1 - Math.max(0, concavity) * 2.2;
+  return Math.min(1, Math.max(0.62, ao));
 }
 
 /**
@@ -40,6 +92,7 @@ export function emitPiece(
   opts: { flipU?: boolean } = {},
 ): void {
   const rows = grid.pos.length - 1;
+  const gridCols = grid.pos[0].length - 1;
   const cols = colEnd - colStart;
   const base = acc.position.length / 3;
 
@@ -74,10 +127,14 @@ export function emitPiece(
     const rowArc = arc[i];
     const total = rowArc[cols];
     for (let j = 0; j <= cols; j++) {
-      const p = grid.pos[i][colStart + j];
-      const n = grid.nrm[i][colStart + j];
+      const col = colStart + j;
+      const p = grid.pos[i][col];
+      const n = grid.nrm[i][col];
       acc.position.push(p.x, p.y, p.z);
       acc.normal.push(n.x, n.y, n.z);
+
+      const ao = occlusionAt(grid, i, col, rows, gridCols);
+      acc.color.push(ao, ao, ao);
 
       // Centrada respecto a la fila más ancha del molde.
       let u = 0.5 + (rowArc[j] - total / 2) / maxArc;
@@ -99,6 +156,23 @@ export function emitPiece(
   }
 }
 
+/** Vértice suelto con AO explícita (tapas de puño, puntera, etc.). */
+export function pushVertex(
+  acc: Accum,
+  p: THREE.Vector3,
+  n: THREE.Vector3,
+  u: number,
+  v: number,
+  ao = 0.82,
+): number {
+  const index = acc.position.length / 3;
+  acc.position.push(p.x, p.y, p.z);
+  acc.normal.push(n.x, n.y, n.z);
+  acc.color.push(ao, ao, ao);
+  acc.uv.push(u, v);
+  return index;
+}
+
 export function toBufferGeometry(acc: Accum): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
@@ -110,6 +184,12 @@ export function toBufferGeometry(acc: Accum): THREE.BufferGeometry {
     new THREE.Float32BufferAttribute(acc.normal, 3),
   );
   geometry.setAttribute("uv", new THREE.Float32BufferAttribute(acc.uv, 2));
+  if (acc.color.length) {
+    geometry.setAttribute(
+      "color",
+      new THREE.Float32BufferAttribute(acc.color, 3),
+    );
+  }
   geometry.setIndex(acc.index);
   geometry.computeBoundingSphere();
   return geometry;

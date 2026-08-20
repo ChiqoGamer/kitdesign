@@ -9,7 +9,7 @@ import { buildJerseyGeometry } from "@geom/jersey";
 import { buildShortsGeometry } from "@geom/shorts";
 import { buildSocksGeometry } from "@geom/socks";
 import { useGarmentTexture } from "./useGarmentTexture";
-import { getFabricNormalMap } from "./fabricNormal";
+import { getFabricNormalMap, getFabricRoughnessMap } from "./fabricNormal";
 
 /**
  * Disposición del kit completo en escena, estilo "equipación flotante":
@@ -88,16 +88,19 @@ function GarmentMesh({
     >
       <meshPhysicalMaterial
         map={texture}
+        vertexColors
         normalMap={getFabricNormalMap()}
-        normalScale={new THREE.Vector2(0.4, 0.4)}
+        normalScale={new THREE.Vector2(0.22, 0.22)}
+        roughnessMap={getFabricRoughnessMap()}
         side={THREE.DoubleSide}
-        roughness={0.74}
+        roughness={0.82}
         metalness={0}
-        sheen={0.16}
-        sheenRoughness={0.85}
-        sheenColor={new THREE.Color("#ffffff")}
-        clearcoat={0.02}
-        envMapIntensity={0.55}
+        sheen={0.28}
+        sheenRoughness={0.62}
+        sheenColor={new THREE.Color("#e8eefc")}
+        clearcoat={0.03}
+        clearcoatRoughness={0.7}
+        envMapIntensity={0.6}
       />
     </mesh>
   );

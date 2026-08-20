@@ -153,6 +153,9 @@ export function Viewer({
     >
       <color attach="background" args={["#0B0D10"]} />
       <hemisphereLight intensity={0.22} groundColor="#0B0D10" />
+      {/* Luz de recorte trasera: separa la silueta del fondo, como en un
+          render de producto. */}
+      <directionalLight position={[-1.8, 1.6, -2.4]} intensity={0.5} color="#cfe0ff" />
       <directionalLight
         position={[1.6, 2.4, 2.2]}
         intensity={0.85}
@@ -179,9 +182,9 @@ export function Viewer({
 
       <ContactShadows
         position={[0, -1.42, 0]}
-        opacity={0.45}
+        opacity={0.55}
         scale={3}
-        blur={2.6}
+        blur={2.4}
         far={1.4}
       />
 

@@ -4,6 +4,7 @@ import { PIECE_BY_ID, type PieceRect } from "./atlas";
 import {
   emitPiece,
   newAccum,
+  pushVertex,
   toBufferGeometry,
   type Accum,
   type Grid,
@@ -328,24 +329,30 @@ function emitSleeve(
   emitPiece(acc, { pos, nrm }, 0, SEG_R, rect, { flipU: side < 0 });
 
   // Tapa del puño, para que no se vea el interior del tubo.
-  const base = acc.position.length / 3;
   center(1, c0);
   center(0.99, c1);
   axis.subVectors(c0, c1).normalize();
-  acc.position.push(c0.x, c0.y, c0.z);
-  acc.normal.push(axis.x, axis.y, axis.z);
-  acc.uv.push(rect.x + rect.w * 0.5, rect.y + rect.h * 0.985);
+  const capCenter = pushVertex(
+    acc,
+    c0,
+    axis,
+    rect.x + rect.w * 0.5,
+    rect.y + rect.h * 0.985,
+    0.6,
+  );
   for (let j = 0; j <= SEG_R; j++) {
     const p = pos[SEG_L][j];
-    acc.position.push(p.x, p.y, p.z);
-    acc.normal.push(axis.x, axis.y, axis.z);
-    acc.uv.push(
+    pushVertex(
+      acc,
+      p,
+      axis,
       rect.x + rect.w * (0.5 + 0.42 * Math.cos((j / SEG_R) * Math.PI * 2)),
       rect.y + rect.h * 0.985,
+      0.62,
     );
   }
   for (let j = 0; j < SEG_R; j++) {
-    acc.index.push(base, base + 1 + j, base + 2 + j);
+    acc.index.push(capCenter, capCenter + 1 + j, capCenter + 2 + j);
   }
 }
 
