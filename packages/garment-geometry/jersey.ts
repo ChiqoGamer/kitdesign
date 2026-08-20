@@ -82,11 +82,13 @@ interface NeckShape {
   backDrop: number;
   /** Multiplicador del ancho del escote. */
   widthScale: number;
+  /** true = escote en punta (V); false = redondo, sin pico al frente. */
+  pointed: boolean;
 }
 
 const NECK_SHAPES: Record<CollarKind, NeckShape> = {
-  crew: { frontDrop: 0.030, backDrop: 0.010, widthScale: 1.0 },
-  v: { frontDrop: 0.128, backDrop: 0.010, widthScale: 1.1 },
+  crew: { frontDrop: 0.034, backDrop: 0.012, widthScale: 0.94, pointed: false },
+  v: { frontDrop: 0.128, backDrop: 0.010, widthScale: 1.1, pointed: true },
 };
 
 /** Extensión horizontal desde la sisa, en metros. */
@@ -113,10 +115,15 @@ const SLEEVE_DROP: Record<SleeveKind, number> = {
  * fórmula con una caída chica.
  */
 function neckDrop(theta: number, shape: NeckShape): number {
-  const lateral = Math.abs(Math.cos(theta)); // 0 al centro, 1 a los lados
   const towardsFront = Math.sin(theta) > 0;
   const depth = towardsFront ? shape.frontDrop : shape.backDrop;
-  return depth * Math.max(0, 1 - lateral);
+  if (shape.pointed) {
+    // V: lineal en |cos θ| ≈ lineal en |x| → punta al frente.
+    return depth * Math.max(0, 1 - Math.abs(Math.cos(theta)));
+  }
+  // Redondo: bump sin² → escote ovalado suave, sin pico ni esquinas.
+  const f = Math.abs(Math.sin(theta)); // 0 al lado, 1 al frente/espalda
+  return depth * f * f;
 }
 
 /** Altura del borde superior del tubo (baja junto con el escote). */
@@ -176,10 +183,12 @@ function torsoPoint(
 
   // Canesú: de la línea de hombro al escote.
   const s = (t - YOKE_START) / (1 - YOKE_START);
-  // Horizontal cierra rápido y vertical sube despacio: eso redondea el
-  // hombro en vez de producir un cono.
-  const eh = 1 - (1 - s) * (1 - s);
-  const ev = Math.pow(s, 1.8);
+  // Horizontal cierra y vertical sube, ambos con derivada 0 en la línea del
+  // hombro: sin ese C1 aparece un pliegue duro (la "esquina" del hombro).
+  // eh (smoothstep) cierra más que ev al principio → repisa de hombro
+  // redondeada que después curva hacia el escote.
+  const eh = s * s * (3 - 2 * s);
+  const ev = s * s * (2 - s) * 0.5 + s * s * s * 0.5;
 
   const w1 = profileAt(1, WIDTH_PROFILE);
   const d1 = profileAt(1, DEPTH_PROFILE);
