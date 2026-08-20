@@ -101,6 +101,13 @@ export function renderGarment(
     ctx.restore();
   }
 
+  // Paneles (hombro / laterales) por encima de la base, sólo en la camiseta.
+  if (garment === "jersey") {
+    for (const piece of atlas.pieces) {
+      paintPanels(ctx, state, piece, px);
+    }
+  }
+
   // Capas encima del patrón, en orden de apilado.
   ctx.imageSmoothingEnabled = true;
   for (const layer of state.layers) {
@@ -202,4 +209,84 @@ function drawNumber(
     ctx.fillStyle = resolveColor(state, layer.color);
     ctx.fillText(layer.value, 0, 0);
   });
+}
+
+
+/** Rect exacto de la pieza en píxeles (sin sangrado). */
+function exactRect(piece: Piece, px: number) {
+  const { x, y, w, h } = piece.rect;
+  return { x: x * px, y: (1 - (y + h)) * px, w: w * px, h: h * px };
+}
+
+/** Pinta la zona `zone` recortada a un sub-rect, con su gu/gv. */
+function paintSub(
+  ctx: CanvasRenderingContext2D,
+  state: DesignState,
+  zone: "shoulderPanels" | "sidePanels",
+  clip: { x: number; y: number; w: number; h: number },
+  gu: [number, number],
+  gv: [number, number],
+): void {
+  const fill = state.kit.zones[zone];
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(clip.x, clip.y, clip.w, clip.h);
+  ctx.clip();
+  PAINTERS[fill.pattern]({
+    ctx,
+    rect: clip,
+    gu,
+    gv,
+    colors: fill.colors.map((c: string) => resolveColor(state, c)),
+    params: fill.params,
+  });
+  ctx.restore();
+}
+
+/** Ancho del panel lateral y alto del panel de hombro, como fracción. */
+const SIDE_FRAC = 0.17;
+const SHOULDER_FRAC = 0.2;
+const SLEEVE_SHOULDER_FRAC = 0.42;
+
+function paintPanels(
+  ctx: CanvasRenderingContext2D,
+  state: DesignState,
+  piece: Piece,
+  px: number,
+): void {
+  const side = state.kit.zones.sidePanels;
+  const shoulder = state.kit.zones.shoulderPanels;
+  const r = exactRect(piece, px);
+  const [gu0, gu1] = piece.garmentU;
+  const [gv0, gv1] = piece.garmentV;
+  const isBody = piece.id === "front" || piece.id === "back";
+  const isSleeve = piece.id === "sleeveL" || piece.id === "sleeveR";
+
+  // Paneles laterales: franjas verticales en los bordes del torso (costuras).
+  if (!side.hidden && isBody) {
+    const guAt = (f: number) => gu0 + f * (gu1 - gu0);
+    // Franja izquierda del rect
+    paintSub(ctx, state, "sidePanels",
+      { x: r.x, y: r.y, w: r.w * SIDE_FRAC, h: r.h },
+      [gu0, guAt(SIDE_FRAC)], [gv0, gv1]);
+    // Franja derecha del rect
+    paintSub(ctx, state, "sidePanels",
+      { x: r.x + r.w * (1 - SIDE_FRAC), y: r.y, w: r.w * SIDE_FRAC, h: r.h },
+      [guAt(1 - SIDE_FRAC), gu1], [gv0, gv1]);
+  }
+
+  // Panel de hombro: banda superior del torso + zona de sisa de la manga.
+  if (!shoulder.hidden) {
+    const gvAt = (f: number) => gv1 - f * (gv1 - gv0); // f=0 arriba (v=gv1)
+    if (isBody) {
+      paintSub(ctx, state, "shoulderPanels",
+        { x: r.x, y: r.y, w: r.w, h: r.h * SHOULDER_FRAC },
+        [gu0, gu1], [gvAt(SHOULDER_FRAC), gv1]);
+    } else if (isSleeve) {
+      // La raíz (hombro) de la manga está en v=0 → parte inferior del rect.
+      paintSub(ctx, state, "shoulderPanels",
+        { x: r.x, y: r.y + r.h * (1 - SLEEVE_SHOULDER_FRAC), w: r.w, h: r.h * SLEEVE_SHOULDER_FRAC },
+        [gu0, gu1], [gv0, gv0 + SLEEVE_SHOULDER_FRAC * (gv1 - gv0)]);
+    }
+  }
 }

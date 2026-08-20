@@ -23,12 +23,21 @@ export const GARMENT_LABELS: Record<GarmentId, string> = {
 };
 
 /** Zonas editables del kit completo. Cada una mapea a piezas del patrón. */
-export type ZoneId = "body" | "sleeves" | "collar" | "shorts" | "socks";
+export type ZoneId =
+  | "body"
+  | "sleeves"
+  | "collar"
+  | "shoulderPanels"
+  | "sidePanels"
+  | "shorts"
+  | "socks";
 
 export const ZONE_IDS: ZoneId[] = [
   "body",
   "sleeves",
   "collar",
+  "shoulderPanels",
+  "sidePanels",
   "shorts",
   "socks",
 ];
@@ -37,6 +46,8 @@ export const ZONE_LABELS: Record<ZoneId, string> = {
   body: "Cuerpo",
   sleeves: "Mangas",
   collar: "Cuello",
+  shoulderPanels: "Paneles de hombro",
+  sidePanels: "Paneles laterales",
   shorts: "Short",
   socks: "Medias",
 };
@@ -46,6 +57,8 @@ export const ZONE_GARMENT: Record<ZoneId, GarmentId> = {
   body: "jersey",
   sleeves: "jersey",
   collar: "jersey",
+  shoulderPanels: "jersey",
+  sidePanels: "jersey",
   shorts: "shorts",
   socks: "socks",
 };

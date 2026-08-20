@@ -99,8 +99,8 @@ const ADD_BUTTONS = [
   { key: "texto", label: "Texto", icon: "M5 6h14M12 6v12", ready: true },
   { key: "logo", label: "Logo", icon: "M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z", ready: true },
   { key: "cuffs", label: "Puños", icon: "M6 8h12v3l-2 2H8l-2-2z", ready: false },
-  { key: "sidePanels", label: "Paneles laterales", icon: "M6 4v16M18 4v16", ready: false },
-  { key: "shoulderPanels", label: "Paneles hombros", icon: "M4 8l8-4 8 4", ready: false },
+  { key: "sidePanels", label: "Paneles laterales", icon: "M6 4v16M18 4v16", ready: true },
+  { key: "shoulderPanels", label: "Paneles hombros", icon: "M4 8l8-4 8 4", ready: true },
 ] as const;
 
 export function StackPanel() {
@@ -151,6 +151,13 @@ export function StackPanel() {
     else if (key === "logo") { uploadLogo("chest", "Sponsor"); setTab("logos"); }
     else if (key === "patron") { selectZone("body"); }
     else if (key === "base") { selectZone("body"); }
+    else if (key === "sidePanels") {
+      dispatch({ type: "SET_ZONE_HIDDEN", zone: "sidePanels", hidden: false });
+      selectZone("sidePanels");
+    } else if (key === "shoulderPanels") {
+      dispatch({ type: "SET_ZONE_HIDDEN", zone: "shoulderPanels", hidden: false });
+      selectZone("shoulderPanels");
+    }
   };
 
   return (
@@ -178,7 +185,24 @@ export function StackPanel() {
             {ZONE_LABELS[selectedZone]}
           </div>
           <div className="flex flex-col gap-1 p-2">
-            {/* Gráficos/overlays sobre la base (por ahora ninguno) */}
+            {/* Paneles activos: overlays sobre la base, arriba en el apilado */}
+            {(["shoulderPanels", "sidePanels"] as ZoneId[])
+              .filter((z) => !design.kit.zones[z].hidden)
+              .map((zone) => (
+                <Row
+                  key={zone}
+                  active={selectedZone === zone}
+                  visible={!design.kit.zones[zone].hidden}
+                  swatch={resolveColor(design, design.kit.zones[zone].colors[0])}
+                  name={ZONE_LABELS[zone]}
+                  onToggle={() => dispatch({ type: "TOGGLE_ZONE", zone })}
+                  onSelect={() => selectZone(zone)}
+                  onDelete={() => {
+                    dispatch({ type: "SET_ZONE_HIDDEN", zone, hidden: true });
+                    if (selectedZone === zone) selectZone("body");
+                  }}
+                />
+              ))}
             {/* Zonas base como capas — de arriba (cuello) hacia abajo (base) */}
             {[...jerseyZones].reverse().map((zone: ZoneId) => (
               <Row

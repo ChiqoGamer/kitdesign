@@ -22,6 +22,7 @@ import type { AnchorId, FontId, Layer } from "./layers";
 export type Action =
   | { type: "SET_ZONE_PATTERN"; zone: ZoneId; pattern: PatternId }
   | { type: "TOGGLE_ZONE"; zone: ZoneId }
+  | { type: "SET_ZONE_HIDDEN"; zone: ZoneId; hidden: boolean }
   | { type: "SET_ZONE_COLOR"; zone: ZoneId; slot: 0 | 1 | 2; color: ColorRef }
   | {
       type: "SET_ZONE_PARAM";
@@ -58,6 +59,8 @@ export function describeAction(action: Action): string {
       return `Patrón de ${action.zone}`;
     case "TOGGLE_ZONE":
       return `Mostrar/ocultar ${action.zone}`;
+    case "SET_ZONE_HIDDEN":
+      return action.hidden ? "Quitar panel" : "Agregar panel";
     case "SET_ZONE_COLOR":
       return `Color de ${action.zone}`;
     case "SET_ZONE_PARAM":

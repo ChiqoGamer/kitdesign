@@ -152,6 +152,9 @@ export function renderFlatJersey(
   paintRegion(ctx, state, "sleeves", paths.sleeveR, box, [1, 0]);
   paintRegion(ctx, state, "collar", paths.collar, box, [0, 1]);
 
+  // Paneles (hombro y laterales) por encima de la base.
+  paintFlatPanels(ctx, state, paths, box);
+
   // Sombra de contacto muy sutil en el borde para dar volumen.
   ctx.save();
   ctx.clip(paths.outline);
@@ -226,4 +229,52 @@ function drawFlatLayer(
     ctx.fillText(n.value, 0, 0);
   }
   ctx.restore();
+}
+
+
+const SIDE_FRAC_F = 0.09; // ancho de la franja lateral (fracción de la caja)
+const SHOULDER_TOP = 0.05;
+const SHOULDER_BOTTOM = 0.24;
+
+/** Pinta paneles de hombro y laterales sobre la silueta plana. */
+function paintFlatPanels(
+  ctx: CanvasRenderingContext2D,
+  state: DesignState,
+  paths: { outline: Path2D; body: Path2D },
+  box: Box,
+): void {
+  const shoulder = state.kit.zones.shoulderPanels;
+  const side = state.kit.zones.sidePanels;
+
+  // Panel de hombro: banda superior, recortada a toda la silueta
+  // (cubre hombros y parte alta de las mangas).
+  if (!shoulder.hidden) {
+    ctx.save();
+    ctx.clip(paths.outline);
+    ctx.fillStyle = resolveColor(state, shoulder.colors[0]);
+    ctx.fillRect(
+      box.x,
+      box.y + box.h * SHOULDER_TOP,
+      box.w,
+      box.h * (SHOULDER_BOTTOM - SHOULDER_TOP),
+    );
+    ctx.restore();
+  }
+
+  // Paneles laterales: franjas verticales en los lados, recortadas al torso.
+  if (!side.hidden) {
+    ctx.save();
+    ctx.clip(paths.body);
+    ctx.fillStyle = resolveColor(state, side.colors[0]);
+    // franja izquierda
+    ctx.fillRect(box.x + box.w * 0.30, box.y, box.w * SIDE_FRAC_F, box.h);
+    // franja derecha
+    ctx.fillRect(
+      box.x + box.w * (0.70 - SIDE_FRAC_F),
+      box.y,
+      box.w * SIDE_FRAC_F,
+      box.h,
+    );
+    ctx.restore();
+  }
 }

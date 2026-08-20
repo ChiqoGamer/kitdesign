@@ -30,6 +30,10 @@ export function applyAction(state: DesignState, action: Action): ApplyResult {
           z.hidden = !z.hidden;
           break;
         }
+        case "SET_ZONE_HIDDEN": {
+          draft.kit.zones[action.zone].hidden = action.hidden;
+          break;
+        }
         case "SET_ZONE_COLOR": {
           draft.kit.zones[action.zone].colors[action.slot] = action.color;
           break;

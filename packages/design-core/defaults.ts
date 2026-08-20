@@ -12,6 +12,20 @@ function fill(
   };
 }
 
+/** Paneles de hombro y laterales: existen siempre, ocultos hasta agregarse. */
+function PANELS(): { shoulderPanels: ZoneFill; sidePanels: ZoneFill } {
+  return {
+    shoulderPanels: {
+      ...fill("solid", ["palette:2", "palette:1", "palette:0"]),
+      hidden: true,
+    },
+    sidePanels: {
+      ...fill("solid", ["palette:2", "palette:1", "palette:0"]),
+      hidden: true,
+    },
+  };
+}
+
 export function createDefaultDesign(): DesignState {
   return {
     schema: 1,
@@ -24,6 +38,7 @@ export function createDefaultDesign(): DesignState {
     kit: {
       construction: { collar: "crew", sleeve: "short" },
       zones: {
+        ...PANELS(),
         body: fill("stripesV", ["palette:0", "palette:1", "palette:2"], {
           count: 7,
           width: 0.5,
@@ -61,6 +76,7 @@ export const TEMPLATES: Template[] = [
     build: () => ({
       construction: { collar: "crew", sleeve: "short" },
       zones: {
+        ...PANELS(),
         body: fill("solid", ["palette:0", "palette:1", "palette:2"]),
         sleeves: fill("solid", ["palette:0", "palette:1", "palette:2"]),
         collar: fill("solid", ["palette:1", "palette:0", "palette:2"]),
@@ -75,6 +91,7 @@ export const TEMPLATES: Template[] = [
     build: () => ({
       construction: { collar: "crew", sleeve: "short" },
       zones: {
+        ...PANELS(),
         body: fill("stripesV", ["palette:0", "palette:1", "palette:2"], {
           count: 7,
           width: 0.5,
@@ -96,6 +113,7 @@ export const TEMPLATES: Template[] = [
     build: () => ({
       construction: { collar: "v", sleeve: "short" },
       zones: {
+        ...PANELS(),
         body: fill("sash", ["palette:0", "palette:2", "palette:1"], {
           width: 0.22,
           angle: 28,
@@ -114,6 +132,7 @@ export const TEMPLATES: Template[] = [
     build: () => ({
       construction: { collar: "crew", sleeve: "short" },
       zones: {
+        ...PANELS(),
         body: fill("stripesH", ["palette:0", "palette:1", "palette:2"], {
           count: 9,
           width: 0.5,
@@ -137,6 +156,7 @@ export const TEMPLATES: Template[] = [
     build: () => ({
       construction: { collar: "crew", sleeve: "short" },
       zones: {
+        ...PANELS(),
         body: fill("halves", ["palette:0", "palette:2", "palette:1"], {
           position: 0.5,
         }),
@@ -157,6 +177,7 @@ export const TEMPLATES: Template[] = [
     build: () => ({
       construction: { collar: "v", sleeve: "short" },
       zones: {
+        ...PANELS(),
         body: fill("gradient", ["palette:0", "palette:2", "palette:1"], {
           position: 0.5,
         }),
