@@ -109,7 +109,18 @@ ubicación, ajuste fino). Las capas se componen en el mismo atlas que la
 textura 3D, así que aparecen igual en 3D, en la vista Textura y (a futuro)
 en el archivo de fabricación.
 
-Pendiente inmediato: persistencia, export/compartir, y el agente de IA.
+**Guardar y compartir** (hecho): autoguardado en el navegador con
+restauración al abrir, y link público `/d/[slug]` con presentación en 3D y
+2D de sólo lectura. El almacén de compartidos escribe archivos en disco
+(`.data/`) a propósito: el dato ya es el JSON del DesignState, así que
+pasarlo a Postgres es cambiar dos funciones.
+
+**Exportar PNG** (hecho): lámina de presentación (club, frente y espalda,
+paleta con códigos, confección) generada con el renderer plano — sincrónica
+y determinista, sin depender del estado de la GPU — y captura del visor 3D.
+
+Pendiente inmediato: login y proyectos (hoy el guardado es por navegador,
+no por cuenta), ficha técnica para el fabricante, y el agente de IA.
 
 ### Deuda conocida
 

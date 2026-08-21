@@ -12,6 +12,7 @@ import {
 import { useEditor } from "@/src/editor/store";
 import { useAutosave } from "@/src/editor/useAutosave";
 import { ShareDialog } from "@/src/editor/ShareDialog";
+import { ExportDialog } from "@/src/editor/ExportDialog";
 import { StackPanel } from "@/src/editor/panels/StackPanel";
 import { PalettePanel } from "@/src/editor/panels/PalettePanel";
 import { TemplatePanel } from "@/src/editor/panels/TemplatePanel";
@@ -68,6 +69,7 @@ export default function EditorPage() {
   const [refMesh, setRefMesh] = useState(true);
 
   const [sharing, setSharing] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useAutosave();
   const saveState = useEditor((s) => s.saveState);
@@ -165,6 +167,12 @@ export default function EditorPage() {
             className="rounded-md px-3 py-1.5 text-xs font-medium text-ink-300 transition-colors hover:bg-ink-700 hover:text-ink-50"
           >
             Guardar
+          </button>
+          <button
+            onClick={() => setExporting(true)}
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-ink-300 transition-colors hover:bg-ink-700 hover:text-ink-50"
+          >
+            Exportar
           </button>
           <button
             onClick={() => setSharing(true)}
@@ -286,6 +294,9 @@ export default function EditorPage() {
       </div>
       {sharing ? (
         <ShareDialog design={design} onClose={() => setSharing(false)} />
+      ) : null}
+      {exporting ? (
+        <ExportDialog design={design} onClose={() => setExporting(false)} />
       ) : null}
     </div>
   );

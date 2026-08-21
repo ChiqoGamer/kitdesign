@@ -11,6 +11,7 @@ import {
 } from "@react-three/drei";
 import type { DesignState, ZoneId } from "@core/index";
 import { Kit, type KitFocus } from "./Kit";
+import { registerViewerCanvas } from "./capture";
 
 export type ViewName = "front" | "back" | "left" | "right";
 
@@ -147,8 +148,14 @@ export function Viewer({
       shadows
       dpr={[1, 2]}
       camera={{ position: [0, 0.05, 3.3], fov: 30 }}
-      gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
+      gl={{
+        antialias: true,
+        toneMapping: THREE.ACESFilmicToneMapping,
+        // Necesario para poder exportar el visor como PNG.
+        preserveDrawingBuffer: true,
+      }}
       onCreated={({ gl }) => {
+        registerViewerCanvas(gl.domElement);
         // Exposición < 1: con ACES y un entorno de estudio, el default quema
         // los colores saturados y un azul de club sale celeste.
         gl.toneMappingExposure = 0.92;
