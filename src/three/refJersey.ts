@@ -9,12 +9,26 @@ import { PIECE_BY_ID } from "@geom/atlas";
  * logos y números siguen funcionando sin tocar los painters.
  *
  * El layout se derivó del propio archivo con análisis de componentes
- * conexas sobre las UVs. Son 4 islas:
+ * conexas sobre las UVs, y coincide con la plantilla de textura del editor
+ * de origen (confirmado contra ella pieza por pieza):
  *
  *   torso     u 0.314–0.686  v 0.058–0.942   (2734 vértices)
  *   manga izq u 0.242–0.360  v 0.020–0.332   ( 814)
  *   manga der u 0.641–0.758  v 0.020–0.332   ( 814)
  *   cuello    u 0.471–0.530  v 0.492–0.518   (  78)  ← sólo el borde interno
+ *
+ * En la plantilla del editor de origen (v=0 arriba, convención glTF):
+ *   rosa   = frente         → mitad v>0.5 del torso
+ *   azul   = espalda        → mitad v<0.5 del torso
+ *   gris   = cuello         → el óvalo central, la isla de 78 vértices
+ *   verde superior = mangas cortas  → las dos islas de manga de ESTE modelo
+ *   verde inferior = mangas largas  → sin geometría acá (modelo de manga corta)
+ *   amarillo       = mangas interiores → tampoco existen en este modelo
+ *
+ * Las regiones sin geometría quedan sin usar y no hace falta pintarlas. Si
+ * más adelante se carga la variante de manga larga, sus islas caerán en el
+ * verde inferior y la clasificación por isla las detecta igual (se ubican
+ * por su centro en X, no por rangos fijos).
  *
  * Orientación del torso, confirmada midiendo la geometría:
  *   - v = 0.5 es el ESCOTE (y máxima); v→0.94 baja al ruedo delantero y
