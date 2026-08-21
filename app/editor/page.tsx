@@ -160,7 +160,9 @@ export default function EditorPage() {
                 ? "Guardando…"
                 : saveState === "pendiente"
                   ? "Sin guardar"
-                  : ""}
+                  : saveState === "sin-espacio"
+                    ? "No entra en este navegador"
+                    : ""}
           </span>
           <button
             onClick={save}

@@ -32,6 +32,14 @@ export function applyAction(state: DesignState, action: Action): ApplyResult {
           );
           break;
         }
+        case "IMPORT_TEXTURE": {
+          draft.kit.texture = action.texture;
+          break;
+        }
+        case "CLEAR_TEXTURE": {
+          delete draft.kit.texture;
+          break;
+        }
         case "TOGGLE_ZONE": {
           const z = draft.kit.zones[action.zone];
           z.hidden = !z.hidden;

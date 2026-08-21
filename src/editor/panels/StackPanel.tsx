@@ -94,7 +94,7 @@ function Row({
 
 const ADD_BUTTONS = [
   { key: "base", label: "Diseño base", icon: "M4 6h16M4 12h16M4 18h16", ready: true },
-  { key: "grafico", label: "Gráfico", icon: "M4 5h16v11H4zM4 12l4-3 4 3 4-4 4 3", ready: false },
+  { key: "textura", label: "Importar textura", icon: "M4 5h16v11H4zM4 12l4-3 4 3 4-4 4 3", ready: true },
   { key: "patron", label: "Patrón", icon: "M5 5h3v3H5zM10 5h3v3h-3zM15 5h3v3h-3zM5 10h3v3H5zM10 10h3v3h-3zM15 10h3v3h-3z", ready: true },
   { key: "texto", label: "Texto", icon: "M5 6h14M12 6v12", ready: true },
   { key: "logo", label: "Logo", icon: "M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z", ready: true },
@@ -118,6 +118,8 @@ export function StackPanel() {
   const fileInput = useRef<HTMLInputElement>(null);
   const pendingAnchor = useRef<AnchorId>("crest");
   const pendingName = useRef<string>("Logo");
+  /** Qué hacer con el archivo que vuelva del mismo <input type="file">. */
+  const pendingKind = useRef<"logo" | "texture">("logo");
 
   const jerseyZones = GARMENT_ZONES.jersey; // [body, sleeves, collar]
   const logoLayers = design.layers.filter((l) => l.kind === "logo" && layerGarment(l) === "jersey");
@@ -126,8 +128,14 @@ export function StackPanel() {
   );
 
   const uploadLogo = (anchor: AnchorId, name: string) => {
+    pendingKind.current = "logo";
     pendingAnchor.current = anchor;
     pendingName.current = name;
+    fileInput.current?.click();
+  };
+
+  const importTexture = () => {
+    pendingKind.current = "texture";
     fileInput.current?.click();
   };
 
@@ -136,8 +144,18 @@ export function StackPanel() {
     e.target.value = "";
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () =>
-      addLayer(createLogoLayer(reader.result as string, pendingAnchor.current, pendingName.current));
+    reader.onload = () => {
+      const src = reader.result as string;
+      if (pendingKind.current === "texture") {
+        dispatch({
+          type: "IMPORT_TEXTURE",
+          texture: { src, name: file.name, layout: "reference" },
+        });
+        setNotice(null);
+        return;
+      }
+      addLayer(createLogoLayer(src, pendingAnchor.current, pendingName.current));
+    };
     reader.readAsDataURL(file);
   };
 
@@ -149,6 +167,7 @@ export function StackPanel() {
     setNotice(null);
     if (key === "texto") { addLayer(createTextLayer("JUGADOR")); setTab("numeros"); }
     else if (key === "logo") { uploadLogo("chest", "Sponsor"); setTab("logos"); }
+    else if (key === "textura") { importTexture(); }
     else if (key === "patron") { selectZone("body"); }
     else if (key === "base") { selectZone("body"); }
     else if (key === "sidePanels") {
@@ -181,6 +200,31 @@ export function StackPanel() {
 
       {tab === "capas" && (
         <>
+          {design.kit.texture && (
+            <div className="mx-2 mt-2 rounded-md border border-accent/40 bg-accent/10 p-2">
+              <div className="flex items-center gap-2">
+                <img
+                  src={design.kit.texture.src}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded border border-ink-700 object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-medium text-ink-100">
+                    {design.kit.texture.name}
+                  </div>
+                  <div className="text-[10px] text-ink-400">
+                    Textura importada — reemplaza el patrón base
+                  </div>
+                </div>
+                <button
+                  onClick={() => dispatch({ type: "CLEAR_TEXTURE" })}
+                  className="shrink-0 rounded px-2 py-1 text-[11px] font-medium text-ink-300 hover:bg-ink-700 hover:text-ink-50"
+                >
+                  Quitar
+                </button>
+              </div>
+            </div>
+          )}
           <div className="px-3 pt-3 text-[11px] font-semibold uppercase tracking-[0.13em] text-ink-500">
             {ZONE_LABELS[selectedZone]}
           </div>

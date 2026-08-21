@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { PIECE_BY_ID } from "@geom/atlas";
+import { REF_NECK_HOLE } from "@geom/refLayout";
 
 /**
  * MALLA DE REFERENCIA (GLB)
@@ -55,12 +56,7 @@ import { PIECE_BY_ID } from "@geom/atlas";
  * centro en el medio del ancho y en el borde superior (el escote), con el
  * radio del agujero medido sobre las UVs del propio archivo.
  */
-export const REF_NECK_HOLE = {
-  cx: 0.5,
-  cy: 1.0,
-  rx: 0.082,
-  ry: 0.042,
-};
+export { REF_NECK_HOLE };
 
 type Zone = "torso" | "sleeveL" | "sleeveR" | "collar";
 

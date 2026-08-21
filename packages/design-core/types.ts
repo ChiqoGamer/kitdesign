@@ -167,6 +167,17 @@ export const COLLAR_WIDTH_RANGE = { min: 0.012, max: 0.07, step: 0.002 };
 
 import type { Layer } from "./layers";
 
+/**
+ * `src` es un data URL: el diseño tiene que sobrevivir a un reload y a un
+ * link compartido sin depender de un archivo en el disco del usuario.
+ */
+export interface ImportedTexture {
+  src: string;
+  name: string;
+  /** Único layout soportado hoy; el campo existe para poder agregar otros. */
+  layout: "reference";
+}
+
 export interface DesignState {
   schema: 1;
   meta: {
@@ -178,6 +189,14 @@ export interface DesignState {
   kit: {
     construction: KitConstruction;
     zones: Record<ZoneId, ZoneFill>;
+    /**
+     * Textura importada, dibujada para el layout del modelo de referencia.
+     *
+     * Cuando está, reemplaza al patrón base: se transcodifica al atlas y las
+     * capas siguen componiéndose encima, así que el escudo y el número se
+     * pueden seguir moviendo sobre un diseño traído de afuera.
+     */
+    texture?: ImportedTexture;
   };
   /** Capas apiladas sobre el patrón base: escudo, sponsors, nombre, número. */
   layers: Layer[];

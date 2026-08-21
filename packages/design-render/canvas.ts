@@ -18,6 +18,7 @@ import {
 } from "@core/layers";
 import { PAINTERS, type PaintContext } from "./patterns";
 import { getImage } from "./images";
+import { drawImportedPiece } from "./importTexture";
 
 /**
  * CanvasRenderer: DesignState → atlas de textura de una prenda.
@@ -90,11 +91,26 @@ export function renderGarment(
   );
   ctx.fillRect(0, 0, px, px);
 
+  /**
+   * Textura importada: sólo la camiseta, porque el layout de referencia
+   * cubre esa prenda. El short y las medias siguen con su patrón, así que
+   * un diseño importado se puede combinar con el resto del equipamiento.
+   */
+  const imported =
+    garment === "jersey" && state.kit.texture
+      ? getImage(state.kit.texture.src)
+      : null;
+
   for (const piece of atlas.pieces) {
     const fill = state.kit.zones[piece.zone];
+    const rect = toPixels(piece, px, BLEED);
+
+    if (imported && drawImportedPiece(ctx, imported, piece, rect, BLEED)) {
+      continue; // la textura manda: no pintamos el patrón debajo
+    }
+
     if (fill.hidden) continue; // zona oculta: queda el color de fondo
     const painter = PAINTERS[fill.pattern];
-    const rect = toPixels(piece, px, BLEED);
 
     const sx = rect.w / (piece.rect.w * px);
     const sy = rect.h / (piece.rect.h * px);
@@ -127,12 +143,12 @@ export function renderGarment(
   }
 
   // Cinta de cuello pintada (mallas sin pieza de cuello propia).
-  if (garment === "jersey" && options.paintedCollar) {
+  if (garment === "jersey" && options.paintedCollar && !imported) {
     paintCollarBand(ctx, state, atlas, px, options.paintedCollar);
   }
 
   // Paneles (hombro / laterales) por encima de la base, sólo en la camiseta.
-  if (garment === "jersey") {
+  if (garment === "jersey" && !imported) {
     for (const piece of atlas.pieces) {
       paintPanels(ctx, state, piece, px);
     }

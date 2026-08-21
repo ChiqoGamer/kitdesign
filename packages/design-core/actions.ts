@@ -7,6 +7,7 @@ import type {
   PatternId,
   PatternParams,
   ZoneId,
+  ImportedTexture,
 } from "./types";
 import type { AnchorId, FontId, Layer } from "./layers";
 
@@ -24,6 +25,8 @@ import type { AnchorId, FontId, Layer } from "./layers";
 export type Action =
   | { type: "SET_ZONE_PATTERN"; zone: ZoneId; pattern: PatternId }
   | { type: "SET_COLLAR_WIDTH"; value: number }
+  | { type: "IMPORT_TEXTURE"; texture: ImportedTexture }
+  | { type: "CLEAR_TEXTURE" }
   | { type: "TOGGLE_ZONE"; zone: ZoneId }
   | { type: "SET_ZONE_HIDDEN"; zone: ZoneId; hidden: boolean }
   | { type: "SET_ZONE_COLOR"; zone: ZoneId; slot: 0 | 1 | 2; color: ColorRef }
@@ -59,6 +62,10 @@ export function describeAction(action: Action): string {
       return `Patrón de ${action.zone}`;
     case "SET_COLLAR_WIDTH":
       return "Grosor del cuello";
+    case "IMPORT_TEXTURE":
+      return "Importar textura";
+    case "CLEAR_TEXTURE":
+      return "Quitar textura importada";
     case "TOGGLE_ZONE":
       return `Mostrar/ocultar ${action.zone}`;
     case "SET_ZONE_HIDDEN":

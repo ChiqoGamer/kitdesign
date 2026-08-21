@@ -66,7 +66,7 @@ interface EditorStore {
   /** Capa seleccionada para editar sus propiedades. */
   selectedLayerId: string | null;
   /** Estado del guardado, para dar feedback en la barra superior. */
-  saveState: "limpio" | "pendiente" | "guardando" | "guardado";
+  saveState: "limpio" | "pendiente" | "guardando" | "guardado" | "sin-espacio";
   lastSavedAt: string | null;
 
   dispatch: (action: Action) => void;
@@ -175,9 +175,14 @@ export const useEditor = create<EditorStore>((set, get) => ({
       window.localStorage.setItem(STORAGE_KEY, serializeDesign(get().design));
       set({ saveState: "guardado", lastSavedAt: new Date().toISOString() });
     } catch {
-      // Cuota llena (los logos son dataURL y pesan): no se pierde el
-      // diseño en pantalla, sólo no queda persistido.
-      set({ saveState: "pendiente" });
+      /**
+       * Cuota llena. Los logos y sobre todo las texturas importadas son
+       * dataURL y pesan: una textura 2048² se come sola los ~5 MB que da
+       * localStorage. El diseño en pantalla no se pierde, pero dejarlo en
+       * "pendiente" hacía que el cartel dijera "Sin guardar" para siempre
+       * sin explicar por qué. Estado propio para poder decirlo.
+       */
+      set({ saveState: "sin-espacio" });
     }
   },
 

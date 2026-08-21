@@ -8,6 +8,7 @@ import {
   type TextLayer,
 } from "@core/layers";
 import { PAINTERS, type PaintContext } from "./patterns";
+import { refFaceRegion, refSleeveRegion } from "./importTexture";
 import { getImage } from "./images";
 
 /**
@@ -133,6 +134,44 @@ function paintRegion(
   ctx.restore();
 }
 
+
+/**
+ * Pinta una región de la vista plana con la textura importada.
+ *
+ * La 2D no usa el atlas sino la silueta, así que acá no hay remapeo: se
+ * estira la región del origen sobre el bounding box de la pieza y se
+ * recorta con su Path2D. Es una aproximación — la silueta plana no tiene
+ * la misma forma que la pieza desplegada — pero es la lectura correcta del
+ * diseño, que es para lo que se usa esta vista. El 3D y el archivo de
+ * impresión siguen saliendo del atlas, que sí es exacto.
+ */
+function paintRegionImported(
+  ctx: CanvasRenderingContext2D,
+  img: CanvasImageSource,
+  region: Path2D,
+  box: Box,
+  src: { sx: number; sy: number; sw: number; sh: number },
+  flipX = false,
+  flipY = false,
+): void {
+  ctx.save();
+  ctx.clip(region);
+  ctx.translate(box.x + box.w / 2, box.y + box.h / 2);
+  ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+  ctx.drawImage(
+    img,
+    src.sx,
+    src.sy,
+    src.sw,
+    src.sh,
+    -box.w / 2,
+    -box.h / 2,
+    box.w,
+    box.h,
+  );
+  ctx.restore();
+}
+
 /** Dibuja una prenda en vista plana dentro de la caja dada. */
 export function renderFlatJersey(
   ctx: CanvasRenderingContext2D,
@@ -147,13 +186,26 @@ export function renderFlatJersey(
   // torso, para que las rayas se vean como en el 3D.
   const bodyGu: [number, number] =
     side === "front" ? [0.19, -0.19] : [0.69, 0.31];
-  paintRegion(ctx, state, "body", paths.body, box, bodyGu);
-  paintRegion(ctx, state, "sleeves", paths.sleeveL, box, [0, 1]);
-  paintRegion(ctx, state, "sleeves", paths.sleeveR, box, [1, 0]);
-  paintRegion(ctx, state, "collar", paths.collar, box, [0, 1]);
 
-  // Paneles (hombro y laterales) por encima de la base.
-  paintFlatPanels(ctx, state, paths, box);
+  const imported = state.kit.texture ? getImage(state.kit.texture.src) : null;
+  if (imported) {
+    const face = refFaceRegion(imported, side === "front" ? "front" : "back");
+    // El espejado horizontal del atlas no aplica acá: la 2D de la espalda se
+    // mira de frente, no desde adentro de la prenda.
+    paintRegionImported(ctx, imported, paths.body, box, face, false, face.flipY);
+    const sl = refSleeveRegion(imported);
+    paintRegionImported(ctx, imported, paths.sleeveL, box, sl, false, true);
+    paintRegionImported(ctx, imported, paths.sleeveR, box, sl, false, true);
+    paintRegion(ctx, state, "collar", paths.collar, box, [0, 1]);
+  } else {
+    paintRegion(ctx, state, "body", paths.body, box, bodyGu);
+    paintRegion(ctx, state, "sleeves", paths.sleeveL, box, [0, 1]);
+    paintRegion(ctx, state, "sleeves", paths.sleeveR, box, [1, 0]);
+    paintRegion(ctx, state, "collar", paths.collar, box, [0, 1]);
+
+    // Paneles (hombro y laterales) por encima de la base.
+    paintFlatPanels(ctx, state, paths, box);
+  }
 
   // Sombra de contacto muy sutil en el borde para dar volumen.
   ctx.save();
