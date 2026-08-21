@@ -36,7 +36,7 @@ export function createDefaultDesign(): DesignState {
       { id: "p2", hex: "#E11D2E", name: "Rojo" },
     ],
     kit: {
-      construction: { collar: "crew", sleeve: "short" },
+      construction: { collar: "crew", sleeve: "short", collarWidth: 0.028 },
       zones: {
         ...PANELS(),
         body: fill("stripesV", ["palette:0", "palette:1", "palette:2"], {
@@ -74,7 +74,7 @@ export const TEMPLATES: Template[] = [
     slug: "lisa",
     name: "Lisa",
     build: () => ({
-      construction: { collar: "crew", sleeve: "short" },
+      construction: { collar: "crew", sleeve: "short", collarWidth: 0.028 },
       zones: {
         ...PANELS(),
         body: fill("solid", ["palette:0", "palette:1", "palette:2"]),
@@ -89,7 +89,7 @@ export const TEMPLATES: Template[] = [
     slug: "rayas-clasicas",
     name: "Rayas clásicas",
     build: () => ({
-      construction: { collar: "crew", sleeve: "short" },
+      construction: { collar: "crew", sleeve: "short", collarWidth: 0.028 },
       zones: {
         ...PANELS(),
         body: fill("stripesV", ["palette:0", "palette:1", "palette:2"], {
@@ -130,7 +130,7 @@ export const TEMPLATES: Template[] = [
     slug: "aros",
     name: "Aros",
     build: () => ({
-      construction: { collar: "crew", sleeve: "short" },
+      construction: { collar: "crew", sleeve: "short", collarWidth: 0.028 },
       zones: {
         ...PANELS(),
         body: fill("stripesH", ["palette:0", "palette:1", "palette:2"], {
@@ -154,7 +154,7 @@ export const TEMPLATES: Template[] = [
     slug: "mitades",
     name: "Mitades",
     build: () => ({
-      construction: { collar: "crew", sleeve: "short" },
+      construction: { collar: "crew", sleeve: "short", collarWidth: 0.028 },
       zones: {
         ...PANELS(),
         body: fill("halves", ["palette:0", "palette:2", "palette:1"], {

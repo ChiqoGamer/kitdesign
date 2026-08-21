@@ -1,7 +1,9 @@
 import type {
+  CollarKind,
   ColorRef,
   DesignState,
   KitConstruction,
+  SleeveKind,
   PatternId,
   PatternParams,
   ZoneId,
@@ -21,6 +23,7 @@ import type { AnchorId, FontId, Layer } from "./layers";
  */
 export type Action =
   | { type: "SET_ZONE_PATTERN"; zone: ZoneId; pattern: PatternId }
+  | { type: "SET_COLLAR_WIDTH"; value: number }
   | { type: "TOGGLE_ZONE"; zone: ZoneId }
   | { type: "SET_ZONE_HIDDEN"; zone: ZoneId; hidden: boolean }
   | { type: "SET_ZONE_COLOR"; zone: ZoneId; slot: 0 | 1 | 2; color: ColorRef }
@@ -30,11 +33,8 @@ export type Action =
       key: keyof PatternParams;
       value: number;
     }
-  | {
-      type: "SET_CONSTRUCTION";
-      key: keyof KitConstruction;
-      value: KitConstruction[keyof KitConstruction];
-    }
+  | { type: "SET_CONSTRUCTION"; key: "collar"; value: CollarKind }
+  | { type: "SET_CONSTRUCTION"; key: "sleeve"; value: SleeveKind }
   | { type: "SET_PALETTE_COLOR"; index: number; hex: string }
   | { type: "SET_META"; key: keyof DesignState["meta"]; value: string }
   | { type: "ADD_LAYER"; layer: Layer }
@@ -57,6 +57,8 @@ export function describeAction(action: Action): string {
   switch (action.type) {
     case "SET_ZONE_PATTERN":
       return `Patrón de ${action.zone}`;
+    case "SET_COLLAR_WIDTH":
+      return "Grosor del cuello";
     case "TOGGLE_ZONE":
       return `Mostrar/ocultar ${action.zone}`;
     case "SET_ZONE_HIDDEN":

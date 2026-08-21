@@ -2,13 +2,14 @@
 
 import {
   COLLAR_LABELS,
+  COLLAR_WIDTH_RANGE,
   SLEEVE_LABELS,
   SLEEVE_OPTIONS,
   type CollarKind,
   type SleeveKind,
 } from "@core/index";
 import { useEditor } from "../store";
-import { PanelSection, SegmentedControl } from "@/src/components/ui";
+import { PanelSection, SegmentedControl, Slider } from "@/src/components/ui";
 
 export function ConstructionPanel() {
   const construction = useEditor((s) => s.design.kit.construction);
@@ -27,6 +28,17 @@ export function ConstructionPanel() {
             label: COLLAR_LABELS[k],
           }))}
         />
+        <div className="mt-3">
+          <Slider
+            label="Grosor de la cinta"
+            min={COLLAR_WIDTH_RANGE.min}
+            max={COLLAR_WIDTH_RANGE.max}
+            step={COLLAR_WIDTH_RANGE.step}
+            value={construction.collarWidth ?? 0.028}
+            format={(v) => `${(v * 100).toFixed(1)}`}
+            onChange={(value) => dispatch({ type: "SET_COLLAR_WIDTH", value })}
+          />
+        </div>
       </PanelSection>
 
       <PanelSection title="Mangas">

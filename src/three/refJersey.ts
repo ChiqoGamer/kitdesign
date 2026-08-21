@@ -9,26 +9,46 @@ import { PIECE_BY_ID } from "@geom/atlas";
  * logos y números siguen funcionando sin tocar los painters.
  *
  * El layout se derivó del propio archivo con análisis de componentes
- * conexas sobre las UVs (no por umbrales, que fallaban porque las mangas
- * se solapan en u con el torso). Son 4 islas:
+ * conexas sobre las UVs. Son 4 islas:
  *
  *   torso     u 0.314–0.686  v 0.058–0.942   (2734 vértices)
  *   manga izq u 0.242–0.360  v 0.020–0.332   ( 814)
  *   manga der u 0.641–0.758  v 0.020–0.332   ( 814)
- *   cuello    u 0.471–0.530  v 0.492–0.518   (  78)
+ *   cuello    u 0.471–0.530  v 0.492–0.518   (  78)  ← sólo el borde interno
  *
  * Orientación del torso, confirmada midiendo la geometría:
  *   - v = 0.5 es el ESCOTE (y máxima); v→0.94 baja al ruedo delantero y
- *     v→0.06 al ruedo trasero. Es un desplegado "mariposa".
+ *     v→0.06 al ruedo trasero (desplegado "mariposa").
  *   - v > 0.5 es el FRENTE (z medio +), v < 0.5 la ESPALDA (z medio −).
- *   - u crece de −x a +x.
  *
- * Cuello: la isla de 78 vértices es sólo el BORDE INTERIOR del escote, así
- * que pintarla dejaba la cinta exterior sin color (se veía el patrón del
- * cuerpo). La cinta visible pertenece a la isla del torso, de modo que se
- * reclasifica como cuello un anillo de vértices del torso alrededor de la
- * abertura, medido por distancia 3D al borde.
+ * CINTA DE CUELLO
+ * ---------------
+ * La isla de cuello es sólo el borde interior del escote; la cinta visible
+ * por fuera pertenece al torso. Reclasificar geometría para pintarla no
+ * funciona: por vértice mancha la textura (triángulos con vértices en dos
+ * zonas) y por triángulo deja el borde aserrado sobre una malla low-poly.
+ *
+ * Por eso la cinta se PINTA en el atlas (ver design-render/canvas.ts):
+ * como el torso se normaliza con el escote en la fila superior de su
+ * rectángulo, la abertura queda siempre en un lugar conocido y se puede
+ * dibujar un anillo de borde suave y grosor exacto. Acá sólo se exporta
+ * dónde quedó esa abertura.
  */
+
+/**
+ * Ubicación de la abertura del escote dentro del rectángulo del torso, en
+ * coordenadas normalizadas (0..1), derivada de las islas del modelo:
+ * centro en el medio del ancho y en el borde superior (el escote), con el
+ * radio del agujero medido sobre las UVs del propio archivo.
+ */
+export const REF_NECK_HOLE = {
+  cx: 0.5,
+  cy: 1.0,
+  rx: 0.082,
+  ry: 0.042,
+};
+
+type Zone = "torso" | "sleeveL" | "sleeveR" | "collar";
 
 interface Island {
   verts: number[];
@@ -40,7 +60,6 @@ interface Island {
   cy: number;
 }
 
-/** Agrupa vértices en islas UV por componentes conexas de la malla. */
 function findIslands(geo: THREE.BufferGeometry): Island[] {
   const pos = geo.getAttribute("position") as THREE.BufferAttribute;
   const uv = geo.getAttribute("uv") as THREE.BufferAttribute;
@@ -56,16 +75,13 @@ function findIslands(geo: THREE.BufferGeometry): Island[] {
     }
     return a;
   };
-  const union = (a: number, b: number) => {
-    const ra = find(a);
-    const rb = find(b);
-    if (ra !== rb) parent[rb] = ra;
-  };
-
   if (index) {
     for (let i = 0; i < index.count; i += 3) {
-      union(index.getX(i), index.getX(i + 1));
-      union(index.getX(i + 1), index.getX(i + 2));
+      const a = find(index.getX(i));
+      const b = find(index.getX(i + 1));
+      const c = find(index.getX(i + 2));
+      if (a !== b) parent[b] = a;
+      if (a !== c) parent[c] = a;
     }
   }
 
@@ -96,152 +112,13 @@ function findIslands(geo: THREE.BufferGeometry): Island[] {
   return list.sort((a, b) => b.verts.length - a.verts.length);
 }
 
-/**
- * Ancho de la cinta de cuello, como fracción de la altura de la prenda.
- * ~4% equivale a unos 2 cm en una camiseta real.
- */
-const COLLAR_BAND = 0.04;
-
 const norm = (x: number, a: number, b: number) =>
-  b - a < 1e-6 ? 0 : Math.min(1, Math.max(0, (x - a) / (b - a)));
-
-/** Reescribe las UVs para que indexen nuestro atlas de camiseta. */
-export function remapToAtlas(geo: THREE.BufferGeometry): void {
-  const uv = geo.getAttribute("uv") as THREE.BufferAttribute | undefined;
-  if (!uv) return;
-
-  const islands = findIslands(geo);
-  if (islands.length === 0) return;
-
-  // Clasificación: la más grande es el torso; las dos gemelas con centro X
-  // simétrico son las mangas (el signo dice el lado); la chica más alta es
-  // el cuello.
-  const torso = islands[0];
-  const rest = islands.slice(1);
-  const sleeves = rest
-    .filter((g) => Math.abs(g.cx) > 1e-5)
-    .sort((a, b) => b.verts.length - a.verts.length)
-    .slice(0, 2);
-  const collar = rest
-    .filter((g) => !sleeves.includes(g))
-    .sort((a, b) => b.cy - a.cy)[0];
-
-  const front = PIECE_BY_ID.front.rect;
-  const back = PIECE_BY_ID.back.rect;
-  const collarRect = PIECE_BY_ID.collar.rect;
-
-  /**
-   * Anillo de cuello: se toman los vértices del torso cercanos al borde del
-   * escote y se los manda a la pieza de cuello, para que la cinta se vea
-   * pintada por fuera y no sólo por dentro.
-   */
-  const pos = geo.getAttribute("position") as THREE.BufferAttribute;
-  const collarSet = new Set<number>();
-  let neckCx = 0;
-  let neckCz = 0;
-  let bandWidth = 0;
-
-  if (collar) {
-    for (const i of collar.verts) {
-      neckCx += pos.getX(i);
-      neckCz += pos.getZ(i);
-    }
-    neckCx /= collar.verts.length;
-    neckCz /= collar.verts.length;
-
-    geo.computeBoundingBox();
-    const h = geo.boundingBox!.max.y - geo.boundingBox!.min.y;
-    bandWidth = h * COLLAR_BAND;
-
-    for (const i of torso.verts) {
-      const x = pos.getX(i);
-      const y = pos.getY(i);
-      const z = pos.getZ(i);
-      let best = Infinity;
-      for (const j of collar.verts) {
-        const dx = x - pos.getX(j);
-        const dy = y - pos.getY(j);
-        const dz = z - pos.getZ(j);
-        const d = dx * dx + dy * dy + dz * dz;
-        if (d < best) best = d;
-      }
-      if (Math.sqrt(best) < bandWidth) collarSet.add(i);
-    }
-  }
-
-  const collarUv = (i: number, d: number) => {
-    // Alrededor del escote → u; distancia al borde → v (cinta radial).
-    const ang = Math.atan2(pos.getZ(i) - neckCz, pos.getX(i) - neckCx);
-    const fu = (ang + Math.PI) / (Math.PI * 2);
-    const fv = bandWidth > 0 ? Math.min(1, d / bandWidth) : 0;
-    uv.setXY(
-      i,
-      collarRect.x + fu * collarRect.w,
-      collarRect.y + fv * collarRect.h,
-    );
-  };
-
-  // --- Torso: escote en v=0.5, ruedos en los extremos ---
-  for (const i of torso.verts) {
-    if (collarSet.has(i)) {
-      // Recalcular la distancia sólo para el mapeo de la cinta.
-      let best = Infinity;
-      if (collar) {
-        for (const j of collar.verts) {
-          const dx = pos.getX(i) - pos.getX(j);
-          const dy = pos.getY(i) - pos.getY(j);
-          const dz = pos.getZ(i) - pos.getZ(j);
-          const d = dx * dx + dy * dy + dz * dz;
-          if (d < best) best = d;
-        }
-      }
-      collarUv(i, Math.sqrt(best));
-      continue;
-    }
-    const u = uv.getX(i);
-    const v = uv.getY(i);
-    const isFront = v >= 0.5;
-    const rect = isFront ? front : back;
-    // fv: 0 = ruedo, 1 = escote (igual que nuestras piezas).
-    const fv = isFront ? norm(v, torso.v1, 0.5) : norm(v, torso.v0, 0.5);
-    // El frente se lee con +x a la derecha; la espalda va espejada.
-    const raw = norm(u, torso.u0, torso.u1);
-    const fu = isFront ? raw : 1 - raw;
-    uv.setXY(i, rect.x + fu * rect.w, rect.y + fv * rect.h);
-  }
-
-  // --- Mangas: cada isla a su pieza, según el lado ---
-  for (const g of sleeves) {
-    const rect = g.cx > 0 ? PIECE_BY_ID.sleeveR.rect : PIECE_BY_ID.sleeveL.rect;
-    for (const i of g.verts) {
-      const fu = norm(uv.getX(i), g.u0, g.u1);
-      const fv = norm(uv.getY(i), g.v0, g.v1);
-      uv.setXY(i, rect.x + fu * rect.w, rect.y + fv * rect.h);
-    }
-  }
-
-  // --- Borde interior del escote: también es cuello ---
-  if (collar) {
-    for (const i of collar.verts) collarUv(i, 0);
-  }
-
-  uv.needsUpdate = true;
-
-  if (process.env.NODE_ENV !== "production") {
-    console.log(
-      `[REF] islas=${islands.length} torso=${torso.verts.length}` +
-        ` mangas=${sleeves.map((s) => s.verts.length).join("/")}` +
-        ` cuelloBorde=${collar ? collar.verts.length : "no"}` +
-        ` cintaCuello=${collarSet.size}`,
-    );
-  }
-}
+  b - a < 1e-9 && b - a > -1e-9 ? 0 : Math.min(1, Math.max(0, (x - a) / (b - a)));
 
 /**
- * Extrae la camiseta del GLB lista para usar: LOD más detallado, sin
- * skinning, UVs remapeadas y alineada a la MISMA convención que la
- * geometría procedural (origen en el ruedo, alto 0.688) para compartir el
- * layout del kit.
+ * Convierte el GLB en una geometría lista para el editor: LOD más
+ * detallado, sin skinning, UVs remapeadas a nuestro atlas con cinta de
+ * cuello prolija, y alineada a la convención del kit (origen en el ruedo).
  */
 export function prepareRefGeometry(
   source: THREE.Object3D,
@@ -271,8 +148,67 @@ export function prepareRefGeometry(
     new THREE.BufferAttribute(new Float32Array(vcount * 3).fill(1), 3),
   );
 
-  remapToAtlas(geo);
+  const uv = geo.getAttribute("uv") as THREE.BufferAttribute | undefined;
+  if (uv) {
+    const islands = findIslands(geo);
+    const torso = islands[0];
+    const rest = islands.slice(1);
+    const sleeves = rest
+      .filter((g) => Math.abs(g.cx) > 1e-6)
+      .sort((a, b) => b.verts.length - a.verts.length)
+      .slice(0, 2);
+    const lip = rest
+      .filter((g) => !sleeves.includes(g))
+      .sort((a, b) => b.cy - a.cy)[0];
 
+    const front = PIECE_BY_ID.front.rect;
+    const back = PIECE_BY_ID.back.rect;
+
+    // Torso: escote en la fila superior del rect, ruedos abajo.
+    for (const i of torso.verts) {
+      const v = uv.getY(i);
+      const isFront = v >= 0.5;
+      const r = isFront ? front : back;
+      const fv = isFront ? norm(v, torso.v1, 0.5) : norm(v, torso.v0, 0.5);
+      const raw = norm(uv.getX(i), torso.u0, torso.u1);
+      const fu = isFront ? raw : 1 - raw;
+      uv.setXY(i, r.x + fu * r.w, r.y + fv * r.h);
+    }
+
+    for (const g of sleeves) {
+      const r = g.cx > 0 ? PIECE_BY_ID.sleeveR.rect : PIECE_BY_ID.sleeveL.rect;
+      for (const i of g.verts) {
+        uv.setXY(
+          i,
+          r.x + norm(uv.getX(i), g.u0, g.u1) * r.w,
+          r.y + norm(uv.getY(i), g.v0, g.v1) * r.h,
+        );
+      }
+    }
+
+    // Borde interior del escote: toma el color del cuello.
+    if (lip) {
+      const r = PIECE_BY_ID.collar.rect;
+      for (const i of lip.verts) {
+        uv.setXY(
+          i,
+          r.x + norm(uv.getX(i), lip.u0, lip.u1) * r.w,
+          r.y + norm(uv.getY(i), lip.v0, lip.v1) * r.h,
+        );
+      }
+    }
+    uv.needsUpdate = true;
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `[REF] islas=${islands.length} torso=${torso.verts.length}` +
+          ` mangas=${sleeves.map((g) => g.verts.length).join("/")}` +
+          ` bordeEscote=${lip ? lip.verts.length : "no"}`,
+      );
+    }
+  }
+
+  // Alinear a la convención del kit: origen en el ruedo, centrado en X/Z.
   geo.computeBoundingBox();
   const box = geo.boundingBox!;
   const size = new THREE.Vector3();
@@ -280,8 +216,8 @@ export function prepareRefGeometry(
   box.getSize(size);
   box.getCenter(center);
   geo.translate(-center.x, -box.min.y, -center.z);
-  geo.scale(targetHeight / size.y, targetHeight / size.y, targetHeight / size.y);
-
+  const s = targetHeight / size.y;
+  geo.scale(s, s, s);
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
   return geo;

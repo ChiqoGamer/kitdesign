@@ -25,6 +25,13 @@ export function applyAction(state: DesignState, action: Action): ApplyResult {
           draft.kit.zones[action.zone].pattern = action.pattern;
           break;
         }
+        case "SET_COLLAR_WIDTH": {
+          draft.kit.construction.collarWidth = Math.min(
+            0.07,
+            Math.max(0.012, action.value),
+          );
+          break;
+        }
         case "TOGGLE_ZONE": {
           const z = draft.kit.zones[action.zone];
           z.hidden = !z.hidden;
@@ -44,8 +51,8 @@ export function applyAction(state: DesignState, action: Action): ApplyResult {
           break;
         }
         case "SET_CONSTRUCTION": {
-          // El cast es seguro: la union de Action ya restringe key/value.
-          (draft.kit.construction[action.key] as string) = action.value;
+          if (action.key === "collar") draft.kit.construction.collar = action.value;
+          else draft.kit.construction.sleeve = action.value;
           break;
         }
         case "SET_PALETTE_COLOR": {

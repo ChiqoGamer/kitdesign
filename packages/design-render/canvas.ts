@@ -49,11 +49,36 @@ function toPixels(piece: Piece, size: number, bleed: number) {
   };
 }
 
+/**
+ * Ubicación del escote dentro del rectángulo del torso, en coordenadas
+ * normalizadas, y grosor de la cinta como fracción de la altura del rect.
+ * Sólo aplica a mallas cuyo cuello no es una pieza aparte (ver
+ * `paintedCollar`).
+ */
+export interface CollarBandSpec {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  width: number;
+}
+
+export interface RenderOptions {
+  /**
+   * Cuando la malla no trae cinta de cuello como pieza propia, se pinta un
+   * anillo alrededor del escote. Dibujarlo en la textura da un borde suave
+   * y un grosor exacto — reclasificar geometría dejaba el borde aserrado
+   * sobre una malla low-poly.
+   */
+  paintedCollar?: CollarBandSpec | null;
+}
+
 export function renderGarment(
   ctx: CanvasRenderingContext2D,
   state: DesignState,
   garment: GarmentId,
   size?: number,
+  options: RenderOptions = {},
 ): void {
   const atlas: GarmentAtlas = GARMENT_ATLASES[garment];
   const px = size ?? atlas.size;
@@ -99,6 +124,11 @@ export function renderGarment(
     ctx.clip();
     painter(context);
     ctx.restore();
+  }
+
+  // Cinta de cuello pintada (mallas sin pieza de cuello propia).
+  if (garment === "jersey" && options.paintedCollar) {
+    paintCollarBand(ctx, state, atlas, px, options.paintedCollar);
   }
 
   // Paneles (hombro / laterales) por encima de la base, sólo en la camiseta.
@@ -288,5 +318,50 @@ function paintPanels(
         { x: r.x, y: r.y + r.h * (1 - SLEEVE_SHOULDER_FRAC), w: r.w, h: r.h * SLEEVE_SHOULDER_FRAC },
         [gu0, gu1], [gv0, gv0 + SLEEVE_SHOULDER_FRAC * (gv1 - gv0)]);
     }
+  }
+}
+
+
+/**
+ * Dibuja la cinta de cuello como un anillo alrededor de la abertura, en el
+ * delantero y la espalda. Se recorta con regla "evenodd" (elipse exterior
+ * menos interior) y dentro se corre el painter de la zona cuello, así la
+ * cinta admite patrón y no sólo color plano.
+ */
+function paintCollarBand(
+  ctx: CanvasRenderingContext2D,
+  state: DesignState,
+  atlas: GarmentAtlas,
+  px: number,
+  spec: CollarBandSpec,
+): void {
+  const fill = state.kit.zones.collar;
+  if (fill.hidden) return;
+  const painter = PAINTERS[fill.pattern];
+  const colors = fill.colors.map((c: string) => resolveColor(state, c));
+
+  for (const piece of atlas.pieces) {
+    if (piece.id !== "front" && piece.id !== "back") continue;
+    const r = exactRect(piece, px);
+    const cx = r.x + spec.cx * r.w;
+    const cy = r.y + (1 - spec.cy) * r.h; // cy=1 es el escote (arriba)
+    const rxIn = spec.rx * r.w;
+    const ryIn = spec.ry * r.h;
+    const band = spec.width * r.h;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rxIn + band, ryIn + band, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, rxIn, ryIn, 0, 0, Math.PI * 2);
+    ctx.clip("evenodd");
+    painter({
+      ctx,
+      rect: r,
+      gu: piece.garmentU,
+      gv: piece.garmentV,
+      colors,
+      params: fill.params,
+    });
+    ctx.restore();
   }
 }

@@ -7,11 +7,12 @@ import type { DesignState, GarmentId, ZoneId } from "@core/index";
 import { GARMENT_ATLASES } from "@geom/atlas";
 import { buildJerseyGeometry } from "@geom/jersey";
 import { useGLTF } from "@react-three/drei";
-import { prepareRefGeometry } from "./refJersey";
+import { prepareRefGeometry, REF_NECK_HOLE } from "./refJersey";
 import { buildShortsGeometry } from "@geom/shorts";
 import { buildSocksGeometry } from "@geom/socks";
 import { useGarmentTexture } from "./useGarmentTexture";
 import { getFabricNormalMap, getFabricRoughnessMap } from "./fabricNormal";
+import type { CollarBandSpec } from "@render/canvas";
 
 /**
  * Disposición del kit completo en escena, estilo "equipación flotante":
@@ -49,6 +50,8 @@ interface GarmentMeshProps {
   garment: GarmentId;
   geometry: THREE.BufferGeometry;
   visible: boolean;
+  /** Si la malla no trae cuello como pieza, se pinta la cinta en la textura. */
+  collarBand?: CollarBandSpec | null;
   onPickZone?: (zone: ZoneId) => void;
   onHoverZone?: (zone: ZoneId | null) => void;
 }
@@ -59,10 +62,13 @@ function GarmentMesh({
   garment,
   geometry,
   visible,
+  collarBand,
   onPickZone,
   onHoverZone,
 }: GarmentMeshProps) {
-  const texture = useGarmentTexture(design, revision, garment);
+  const texture = useGarmentTexture(design, revision, garment, {
+    paintedCollar: collarBand ?? null,
+  });
   const layout = KIT_LAYOUT[garment];
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
@@ -156,6 +162,11 @@ export function Kit({ design, revision, focus, refMesh = false, onPickZone, onHo
         garment="jersey"
         geometry={refMesh ? refGeo : proceduralGeo}
         visible={show("jersey")}
+        collarBand={
+          refMesh
+            ? { ...REF_NECK_HOLE, width: design.kit.construction.collarWidth ?? 0.028 }
+            : null
+        }
       />
       <GarmentMesh {...common} garment="shorts" geometry={shortsGeo} visible={show("shorts")} />
       <GarmentMesh {...common} garment="socks" geometry={socksGeo} visible={show("socks")} />

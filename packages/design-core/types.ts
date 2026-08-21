@@ -156,7 +156,14 @@ export const SLEEVE_OPTIONS: SleeveKind[] = ["short", "long"];
 export interface KitConstruction {
   collar: CollarKind;
   sleeve: SleeveKind;
+  /**
+   * Grosor de la cinta de cuello, como fracción de la altura de la pieza.
+   * Sólo aplica a mallas cuyo cuello se pinta en la textura.
+   */
+  collarWidth?: number;
 }
+
+export const COLLAR_WIDTH_RANGE = { min: 0.012, max: 0.07, step: 0.002 };
 
 import type { Layer } from "./layers";
 
