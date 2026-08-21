@@ -4,6 +4,8 @@ import { applyPatches } from "immer";
 import { create } from "zustand";
 import {
   applyAction,
+  parseDesign,
+  serializeDesign,
   createDefaultDesign,
   describeAction,
   layerGarment,
@@ -27,6 +29,8 @@ interface HistoryEntry {
 }
 
 const COALESCE_MS = 700;
+
+const STORAGE_KEY = "kitdesign:project:v1";
 
 function coalesceKeyOf(action: Action): string | null {
   switch (action.type) {
@@ -61,6 +65,9 @@ interface EditorStore {
   focus: GarmentId | "all";
   /** Capa seleccionada para editar sus propiedades. */
   selectedLayerId: string | null;
+  /** Estado del guardado, para dar feedback en la barra superior. */
+  saveState: "limpio" | "pendiente" | "guardando" | "guardado";
+  lastSavedAt: string | null;
 
   dispatch: (action: Action) => void;
   undo: () => void;
@@ -69,6 +76,10 @@ interface EditorStore {
   setSection: (section: string) => void;
   setFocus: (focus: GarmentId | "all") => void;
   selectLayer: (id: string | null) => void;
+  /** Guarda ahora mismo en el navegador. */
+  save: () => void;
+  /** Carga el diseño guardado, si hay uno válido. */
+  restore: () => void;
   /** Agrega una capa y la deja seleccionada, enfocando su prenda. */
   addLayer: (layer: Layer) => void;
   applyTemplate: (slug: string) => void;
@@ -83,6 +94,8 @@ export const useEditor = create<EditorStore>((set, get) => ({
   section: "zonas",
   focus: "all",
   selectedLayerId: null,
+  saveState: "limpio",
+  lastSavedAt: null,
 
   dispatch(action) {
     const { design, past } = get();
@@ -109,6 +122,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
 
     set({
       design: state,
+      saveState: "pendiente",
       revision: get().revision + 1,
       past: canMerge ? [...past.slice(0, -1), entry] : [...past, entry],
       future: [],
@@ -153,6 +167,32 @@ export const useEditor = create<EditorStore>((set, get) => ({
   setSection: (section) => set({ section }),
   setFocus: (focus) => set({ focus }),
   selectLayer: (id) => set({ selectedLayerId: id }),
+
+  save() {
+    if (typeof window === "undefined") return;
+    set({ saveState: "guardando" });
+    try {
+      window.localStorage.setItem(STORAGE_KEY, serializeDesign(get().design));
+      set({ saveState: "guardado", lastSavedAt: new Date().toISOString() });
+    } catch {
+      // Cuota llena (los logos son dataURL y pesan): no se pierde el
+      // diseño en pantalla, sólo no queda persistido.
+      set({ saveState: "pendiente" });
+    }
+  },
+
+  restore() {
+    if (typeof window === "undefined") return;
+    const design = parseDesign(window.localStorage.getItem(STORAGE_KEY));
+    if (!design) return;
+    set({
+      design,
+      revision: get().revision + 1,
+      past: [],
+      future: [],
+      saveState: "guardado",
+    });
+  },
   addLayer(layer) {
     get().dispatch({ type: "ADD_LAYER", layer });
     set({ selectedLayerId: layer.id, focus: layerGarment(layer) });

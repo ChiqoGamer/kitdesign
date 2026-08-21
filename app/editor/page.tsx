@@ -10,6 +10,8 @@ import {
   type ZoneId,
 } from "@core/index";
 import { useEditor } from "@/src/editor/store";
+import { useAutosave } from "@/src/editor/useAutosave";
+import { ShareDialog } from "@/src/editor/ShareDialog";
 import { StackPanel } from "@/src/editor/panels/StackPanel";
 import { PalettePanel } from "@/src/editor/panels/PalettePanel";
 import { TemplatePanel } from "@/src/editor/panels/TemplatePanel";
@@ -64,6 +66,12 @@ export default function EditorPage() {
   const [viewNonce, setViewNonce] = useState(0);
   const [hovered, setHovered] = useState<ZoneId | null>(null);
   const [refMesh, setRefMesh] = useState(true);
+
+  const [sharing, setSharing] = useState(false);
+
+  useAutosave();
+  const saveState = useEditor((s) => s.saveState);
+  const save = useEditor((s) => s.save);
 
   const goToView = (v: ViewName) => {
     setView(v);
@@ -143,10 +151,25 @@ export default function EditorPage() {
             </svg>
           </IconButton>
           <div className="mx-2 h-5 w-px bg-ink-700" />
-          <button className="rounded-md px-3 py-1.5 text-xs font-medium text-ink-300 transition-colors hover:bg-ink-700 hover:text-ink-50">
+          <span className="mr-1 text-[11px] text-ink-500">
+            {saveState === "guardado"
+              ? "Guardado"
+              : saveState === "guardando"
+                ? "Guardando…"
+                : saveState === "pendiente"
+                  ? "Sin guardar"
+                  : ""}
+          </span>
+          <button
+            onClick={save}
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-ink-300 transition-colors hover:bg-ink-700 hover:text-ink-50"
+          >
             Guardar
           </button>
-          <button className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent-dim">
+          <button
+            onClick={() => setSharing(true)}
+            className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent-dim"
+          >
             Compartir
           </button>
         </div>
@@ -261,6 +284,9 @@ export default function EditorPage() {
           {section === "confeccion" ? <ConstructionPanel /> : null}
         </aside>
       </div>
+      {sharing ? (
+        <ShareDialog design={design} onClose={() => setSharing(false)} />
+      ) : null}
     </div>
   );
 }

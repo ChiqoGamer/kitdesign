@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Entorno local
 .env*.local
+
+# Diseños compartidos (almacén local temporal)
+.data/
