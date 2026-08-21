@@ -35,8 +35,13 @@ export interface Anchor {
   /** Tamaño base de la capa como fracción del lado del atlas. */
   baseSize: number;
   /**
-   * La pieza destino está espejada en el modelo 3D (espalda, manga izq).
-   * El renderer invierte el dibujo para que el texto no salga al revés.
+   * Invierte el dibujo en horizontal al pintarlo en el atlas.
+   *
+   * Ojo con esto: el remapeo del torso YA invierte la coordenada u de la
+   * espalda, así que el rectángulo de la espalda cae derecho en pantalla
+   * para quien la mira. Poner `mirror` acá agregaba un segundo espejado y
+   * el nombre y el número salían al revés. Sólo se usa donde la pieza en sí
+   * queda invertida.
    */
   mirror: boolean;
   /** Posición en la vista plana 2D: qué cara y coords normalizadas (0..1). */
@@ -86,7 +91,7 @@ export const ANCHORS: Record<AnchorId, Anchor> = {
     label: "Nombre (espalda)",
     uv: { x: 0.57, y: 0.88 },
     baseSize: 0.075,
-    mirror: true,
+    mirror: false,
     flat: { side: "back", x: 0.5, y: 0.26 },
   },
   backNumber: {
@@ -95,7 +100,7 @@ export const ANCHORS: Record<AnchorId, Anchor> = {
     label: "Número (espalda)",
     uv: { x: 0.57, y: 0.68 },
     baseSize: 0.17,
-    mirror: true,
+    mirror: false,
     flat: { side: "back", x: 0.5, y: 0.46 },
   },
   shortsNumber: {

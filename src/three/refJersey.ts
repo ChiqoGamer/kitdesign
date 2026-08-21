@@ -189,14 +189,20 @@ export function prepareRefGeometry(
       uv.setXY(i, r.x + fu * r.w, r.y + fv * r.h);
     }
 
+    /**
+     * Mangas. La izquierda se invierte en u igual que en la geometría
+     * procedural (que usa flipU para ese lado): así ambas mallas comparten
+     * la misma convención de atlas y el flag `mirror` de los anclajes vale
+     * para las dos. Si no, cada malla necesitaría un valor distinto y el
+     * anclaje dejaría de ser independiente del modelo.
+     */
     for (const g of sleeves) {
-      const r = g.cx > 0 ? PIECE_BY_ID.sleeveR.rect : PIECE_BY_ID.sleeveL.rect;
+      const isLeft = g.cx < 0;
+      const r = isLeft ? PIECE_BY_ID.sleeveL.rect : PIECE_BY_ID.sleeveR.rect;
       for (const i of g.verts) {
-        uv.setXY(
-          i,
-          r.x + norm(uv.getX(i), g.u0, g.u1) * r.w,
-          r.y + norm(uv.getY(i), g.v0, g.v1) * r.h,
-        );
+        const raw = norm(uv.getX(i), g.u0, g.u1);
+        const fu = isLeft ? 1 - raw : raw;
+        uv.setXY(i, r.x + fu * r.w, r.y + norm(uv.getY(i), g.v0, g.v1) * r.h);
       }
     }
 
