@@ -4,78 +4,174 @@ import { PIECE_BY_ID } from "@geom/atlas";
 /**
  * MALLA DE REFERENCIA (GLB)
  * =========================
- * Camiseta low-poly de un editor open source (4.440 vértices, UVs limpias).
- * Se integra remapeando SUS UVs a NUESTRO atlas, de modo que todo lo ya
- * construido (patrones por zona, paneles, logos, números) siga funcionando
- * sin tocar los painters.
+ * Camiseta low-poly de un editor open source (4.440 vértices, 8.274 tris).
+ * Se integra remapeando SUS UVs a NUESTRO atlas, así patrones, paneles,
+ * logos y números siguen funcionando sin tocar los painters.
  *
- * Islas UV del modelo (confirmadas con una cuadrícula de diagnóstico):
- *   - Torso: u ∈ [0.375, 0.625] — frente v > 0.5, espalda v < 0.5
- *   - Manga izquierda: u < 0.375
- *   - Manga derecha:   u > 0.625
- * No trae banda de cuello separada: el escote es borde del torso.
+ * El layout se derivó del propio archivo con análisis de componentes
+ * conexas sobre las UVs (no por umbrales, que fallaban porque las mangas
+ * se solapan en u con el torso). Son 4 islas:
  *
- * Nota sobre la pose: el GLB viene con esqueleto, pero sus vértices ya
- * están en la forma correcta de la prenda (proporciones ancho/alto 1.07,
- * profundidad/alto 0.42). Por eso se usan tal cual y NO se aplica el
- * matrixWorld del nodo: hacerlo mezclaba transforms de huesos y aplastaba
- * la camiseta.
+ *   torso     u 0.314–0.686  v 0.058–0.942   (2734 vértices)
+ *   manga izq u 0.242–0.360  v 0.020–0.332   ( 814)
+ *   manga der u 0.641–0.758  v 0.020–0.332   ( 814)
+ *   cuello    u 0.471–0.530  v 0.492–0.518   (  78)
+ *
+ * Orientación del torso, confirmada midiendo la geometría:
+ *   - v = 0.5 es el ESCOTE (y máxima); v→0.94 baja al ruedo delantero y
+ *     v→0.06 al ruedo trasero. Es un desplegado "mariposa".
+ *   - v > 0.5 es el FRENTE (z medio +), v < 0.5 la ESPALDA (z medio −).
+ *   - u crece de −x a +x.
  */
 
-const TORSO_U0 = 0.375;
-const TORSO_U1 = 0.625;
+interface Island {
+  verts: number[];
+  u0: number;
+  u1: number;
+  v0: number;
+  v1: number;
+  cx: number;
+  cy: number;
+}
 
-const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+/** Agrupa vértices en islas UV por componentes conexas de la malla. */
+function findIslands(geo: THREE.BufferGeometry): Island[] {
+  const pos = geo.getAttribute("position") as THREE.BufferAttribute;
+  const uv = geo.getAttribute("uv") as THREE.BufferAttribute;
+  const index = geo.getIndex();
+  const n = pos.count;
+
+  const parent = new Int32Array(n);
+  for (let i = 0; i < n; i++) parent[i] = i;
+  const find = (a: number): number => {
+    while (parent[a] !== a) {
+      parent[a] = parent[parent[a]];
+      a = parent[a];
+    }
+    return a;
+  };
+  const union = (a: number, b: number) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[rb] = ra;
+  };
+
+  if (index) {
+    for (let i = 0; i < index.count; i += 3) {
+      union(index.getX(i), index.getX(i + 1));
+      union(index.getX(i + 1), index.getX(i + 2));
+    }
+  }
+
+  const map = new Map<number, Island>();
+  for (let i = 0; i < n; i++) {
+    const root = find(i);
+    let g = map.get(root);
+    if (!g) {
+      g = { verts: [], u0: 1, u1: 0, v0: 1, v1: 0, cx: 0, cy: 0 };
+      map.set(root, g);
+    }
+    const u = uv.getX(i);
+    const v = uv.getY(i);
+    g.verts.push(i);
+    g.u0 = Math.min(g.u0, u);
+    g.u1 = Math.max(g.u1, u);
+    g.v0 = Math.min(g.v0, v);
+    g.v1 = Math.max(g.v1, v);
+    g.cx += pos.getX(i);
+    g.cy += pos.getY(i);
+  }
+
+  const list = [...map.values()].filter((g) => g.verts.length > 15);
+  for (const g of list) {
+    g.cx /= g.verts.length;
+    g.cy /= g.verts.length;
+  }
+  return list.sort((a, b) => b.verts.length - a.verts.length);
+}
+
+const norm = (x: number, a: number, b: number) =>
+  b - a < 1e-6 ? 0 : Math.min(1, Math.max(0, (x - a) / (b - a)));
 
 /** Reescribe las UVs para que indexen nuestro atlas de camiseta. */
 export function remapToAtlas(geo: THREE.BufferGeometry): void {
   const uv = geo.getAttribute("uv") as THREE.BufferAttribute | undefined;
   if (!uv) return;
 
+  const islands = findIslands(geo);
+  if (islands.length === 0) return;
+
+  // Clasificación: la más grande es el torso; las dos gemelas con centro X
+  // simétrico son las mangas (el signo dice el lado); la chica más alta es
+  // el cuello.
+  const torso = islands[0];
+  const rest = islands.slice(1);
+  const sleeves = rest
+    .filter((g) => Math.abs(g.cx) > 1e-5)
+    .sort((a, b) => b.verts.length - a.verts.length)
+    .slice(0, 2);
+  const collar = rest
+    .filter((g) => !sleeves.includes(g))
+    .sort((a, b) => b.cy - a.cy)[0];
+
   const front = PIECE_BY_ID.front.rect;
   const back = PIECE_BY_ID.back.rect;
-  const sleeveL = PIECE_BY_ID.sleeveL.rect;
-  const sleeveR = PIECE_BY_ID.sleeveR.rect;
+  const collarRect = PIECE_BY_ID.collar.rect;
 
-  for (let i = 0; i < uv.count; i++) {
+  // --- Torso: escote en v=0.5, ruedos en los extremos ---
+  for (const i of torso.verts) {
     const u = uv.getX(i);
     const v = uv.getY(i);
-    let rect = front;
-    let fu: number;
-    let fv: number;
-
-    if (u < TORSO_U0) {
-      rect = sleeveL;
-      fu = clamp01(u / TORSO_U0);
-      fv = clamp01(v);
-    } else if (u > TORSO_U1) {
-      rect = sleeveR;
-      fu = clamp01((u - TORSO_U1) / (1 - TORSO_U1));
-      fv = clamp01(v);
-    } else {
-      fu = clamp01((u - TORSO_U0) / (TORSO_U1 - TORSO_U0));
-      if (v >= 0.5) {
-        rect = front;
-        fv = clamp01((v - 0.5) / 0.5);
-      } else {
-        rect = back;
-        fv = clamp01((0.5 - v) / 0.5);
-      }
-    }
-
+    const isFront = v >= 0.5;
+    const rect = isFront ? front : back;
+    // fv: 0 = ruedo, 1 = escote (igual que nuestras piezas).
+    const fv = isFront
+      ? norm(v, torso.v1, 0.5)
+      : norm(v, torso.v0, 0.5);
+    // El frente se lee con +x a la derecha; la espalda va espejada.
+    const raw = norm(u, torso.u0, torso.u1);
+    const fu = isFront ? raw : 1 - raw;
     uv.setXY(i, rect.x + fu * rect.w, rect.y + fv * rect.h);
   }
+
+  // --- Mangas: cada isla a su pieza, según el lado ---
+  for (const g of sleeves) {
+    const rect = g.cx > 0 ? PIECE_BY_ID.sleeveR.rect : PIECE_BY_ID.sleeveL.rect;
+    for (const i of g.verts) {
+      const fu = norm(uv.getX(i), g.u0, g.u1);
+      const fv = norm(uv.getY(i), g.v0, g.v1);
+      uv.setXY(i, rect.x + fu * rect.w, rect.y + fv * rect.h);
+    }
+  }
+
+  // --- Cuello: la isla chica ocupa toda la pieza de cuello ---
+  if (collar) {
+    for (const i of collar.verts) {
+      const fu = norm(uv.getX(i), collar.u0, collar.u1);
+      const fv = norm(uv.getY(i), collar.v0, collar.v1);
+      uv.setXY(i, collarRect.x + fu * collarRect.w, collarRect.y + fv * collarRect.h);
+    }
+  }
+
   uv.needsUpdate = true;
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      `[REF] islas=${islands.length} torso=${torso.verts.length}` +
+        ` mangas=${sleeves.map((s) => s.verts.length).join("/")}` +
+        ` cuello=${collar ? collar.verts.length : "no"}`,
+    );
+  }
 }
 
 /**
- * Extrae la camiseta del GLB como geometría lista para usar: LOD más
- * detallado, sin skinning, con las UVs remapeadas y normalizada en altura
- * y centro.
+ * Extrae la camiseta del GLB lista para usar: LOD más detallado, sin
+ * skinning, UVs remapeadas y alineada a la MISMA convención que la
+ * geometría procedural (origen en el ruedo, alto 0.688) para compartir el
+ * layout del kit.
  */
 export function prepareRefGeometry(
   source: THREE.Object3D,
-  /** Igual que la procedural (NECK_Y), para compartir el layout del kit. */
   targetHeight = 0.688,
 ): THREE.BufferGeometry {
   const meshes: THREE.Mesh[] = [];
@@ -90,27 +186,20 @@ export function prepareRefGeometry(
   );
 
   const geo = meshes[0].geometry.clone();
-  // El rig no se usa: la prenda ya está en su forma final.
+  // El rig no se usa: la prenda ya viene en su forma final.
   geo.deleteAttribute("skinIndex");
   geo.deleteAttribute("skinWeight");
 
-  /**
-   * El material del kit usa vertexColors para la oclusión horneada. El GLB
-   * trae su propio COLOR_0 (que sale negro) — se reemplaza por blanco
-   * neutro para no oscurecer la textura de diseño.
-   */
+  // El material del kit usa vertexColors para su propia oclusión; el
+  // COLOR_0 del asset viene negro y apagaría la textura.
   const vcount = geo.getAttribute("position").count;
-  const white = new Float32Array(vcount * 3).fill(1);
-  geo.setAttribute("color", new THREE.BufferAttribute(white, 3));
+  geo.setAttribute(
+    "color",
+    new THREE.BufferAttribute(new Float32Array(vcount * 3).fill(1), 3),
+  );
 
   remapToAtlas(geo);
 
-  /**
-   * Se alinea a la MISMA convención que la geometría procedural: origen en
-   * el ruedo (y=0), centrada en X/Z. El layout del kit (KIT_LAYOUT) está
-   * calibrado para eso; centrar en el origen hacía que la camiseta colgara
-   * media altura hacia abajo y pisara el short.
-   */
   geo.computeBoundingBox();
   const box = geo.boundingBox!;
   const size = new THREE.Vector3();
@@ -118,9 +207,7 @@ export function prepareRefGeometry(
   box.getSize(size);
   box.getCenter(center);
   geo.translate(-center.x, -box.min.y, -center.z);
-  // Escalar después de bajar el ruedo al origen lo mantiene en y=0.
-  const scale = targetHeight / size.y;
-  geo.scale(scale, scale, scale);
+  geo.scale(targetHeight / size.y, targetHeight / size.y, targetHeight / size.y);
 
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
