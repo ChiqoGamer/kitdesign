@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import type { DesignState } from "@core/index";
 import { renderPresentation } from "@render/presentation";
 import { renderReferenceTemplate } from "@render/referenceTemplate";
+import { renderPieceGuide } from "@render/pieceGuide";
+import { loadRefSilhouettes } from "@/src/three/refSilhouettes";
 import { onImagesReady } from "@render/images";
 import { captureViewerPng, hasViewerCanvas } from "@/src/three/capture";
 
-type Kind = "presentacion" | "visor" | "plantilla";
+type Kind = "presentacion" | "visor" | "plantilla" | "guia";
 
 /** Lado de la plantilla de camiseta, en píxeles. */
 const TEMPLATE_SIZE = 2048;
@@ -28,7 +30,13 @@ function fileName(design: DesignState, kind: Kind): string {
       .slice(0, 40) || "diseno";
   const base = `${slug(design.meta.clubName)}-${slug(design.meta.name)}`;
   const suffix =
-    kind === "presentacion" ? "presentacion" : kind === "visor" ? "3d" : "plantilla";
+    kind === "presentacion"
+      ? "presentacion"
+      : kind === "visor"
+        ? "3d"
+        : kind === "guia"
+          ? "guia-piezas"
+          : "plantilla";
   return `${base}-${suffix}.png`;
 }
 
@@ -65,6 +73,23 @@ export function ExportDialog({
           return;
         }
         setDataUrl(png);
+        return;
+      }
+
+      if (kind === "guia") {
+        // Las siluetas salen del modelo y llegan async; el diálogo muestra
+        // el aviso hasta que estén.
+        loadRefSilhouettes().then((tris) => {
+          if (cancelled) return;
+          const canvas = document.createElement("canvas");
+          canvas.width = TEMPLATE_SIZE;
+          canvas.height = TEMPLATE_SIZE;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return;
+          renderPieceGuide(ctx, tris, TEMPLATE_SIZE);
+          setDataUrl(canvas.toDataURL("image/png"));
+        });
+        setDataUrl(null);
         return;
       }
 
@@ -123,8 +148,9 @@ export function ExportDialog({
         <p className="mt-1 text-xs text-ink-400">
           La presentación sirve para mandar por WhatsApp o publicar; la
           captura 3D toma la vista tal como está en pantalla. La plantilla
-          editable trae el diseño en el layout del modelo: se pinta en
-          cualquier editor y se vuelve a subir con “Importar textura”.
+          trae el diseño en el layout del modelo y la guía trae los moldes
+          vacíos con su nombre: las dos se pintan en cualquier editor y se
+          vuelven a subir con “Importar textura”.
         </p>
 
         <div className="mt-4 flex gap-1 rounded-lg bg-ink-800 p-1">
@@ -132,7 +158,8 @@ export function ExportDialog({
             [
               ["presentacion", "Presentación"],
               ["visor", "Captura 3D"],
-              ["plantilla", "Plantilla editable"],
+              ["plantilla", "Plantilla"],
+              ["guia", "Guía de piezas"],
             ] as [Kind, string][]
           ).map(([k, label]) => (
             <button

@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DesignState, GarmentId } from "@core/index";
 import { GARMENT_ATLASES } from "@geom/atlas";
 import { GARMENT_LABELS } from "@core/types";
 import { renderGarment } from "@render/canvas";
 import { onImagesReady } from "@render/images";
+import { renderReferenceTemplate } from "@render/referenceTemplate";
+import { renderPieceOutlines } from "@render/pieceGuide";
 import {
-  referenceGuides,
-  renderReferenceTemplate,
-  type TemplateGuide,
-} from "@render/referenceTemplate";
+  loadRefSilhouettes,
+  type Silhouettes,
+} from "@/src/three/refSilhouettes";
 
 /**
  * Vista "Textura": el diseño en plano, tal como se reparte sobre la prenda.
@@ -27,14 +28,42 @@ import {
  * canvas, la plantilla descargada saldría con los rótulos estampados.
  */
 
+/**
+ * Siluetas de los moldes, sacadas del desplegado UV del modelo. Se cargan
+ * una vez y quedan cacheadas; hasta que llegan se dibuja sin guías, que es
+ * mejor que dibujar rectángulos que no son la forma real.
+ */
+function useSilhouettes(): Silhouettes | null {
+  const [tris, setTris] = useState<Silhouettes | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadRefSilhouettes().then((t) => {
+      if (alive) setTris(t);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return tris;
+}
+
 const GUIDE_LINE = "rgba(255,255,255,0.35)";
 const GUIDE_TEXT = "rgba(255,255,255,0.85)";
 const GUIDE_CHIP = "rgba(11,13,16,0.75)";
 
+interface RectGuide {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  label: string;
+  upsideDown: boolean;
+}
+
 function drawGuide(
   ctx: CanvasRenderingContext2D,
   size: number,
-  { x, y, w, h, label, upsideDown }: TemplateGuide,
+  { x, y, w, h, label, upsideDown }: RectGuide,
 ) {
   const px = x * size;
   const py = y * size;
@@ -78,6 +107,7 @@ function GarmentCanvas({
   const guideRef = useRef<HTMLCanvasElement>(null);
   const size = GARMENT_ATLASES[garment].size;
   const isJersey = garment === "jersey";
+  const silhouettes = useSilhouettes();
 
   useEffect(() => {
     const content = contentRef.current?.getContext("2d");
@@ -100,20 +130,25 @@ function GarmentCanvas({
 
       guides.clearRect(0, 0, size, size);
 
-      const atlas = GARMENT_ATLASES[garment];
-      const shapes: TemplateGuide[] = isJersey
-        ? referenceGuides()
-        : atlas.pieces.map((p) => ({
-            x: p.rect.x,
-            y: 1 - (p.rect.y + p.rect.h),
-            w: p.rect.w,
-            h: p.rect.h,
-            label: p.label.toUpperCase(),
-            upsideDown: false,
-          }));
+      if (isJersey) {
+        // Sin siluetas todavía: mejor sin guías que con rectángulos, que no
+        // son la forma real del molde.
+        if (silhouettes) renderPieceOutlines(guides, silhouettes, size);
+        return;
+      }
 
-      // Fuera de los moldes se atenúa: el fondo existe sólo para tapar fugas
-      // de filtrado y en la vista de corte confunde.
+      // Short y medias siguen siendo rectángulos de verdad: su atlas es
+      // nuestro y las piezas ocupan el rect entero.
+      const atlas = GARMENT_ATLASES[garment];
+      const shapes = atlas.pieces.map((p) => ({
+        x: p.rect.x,
+        y: 1 - (p.rect.y + p.rect.h),
+        w: p.rect.w,
+        h: p.rect.h,
+        label: p.label.toUpperCase(),
+        upsideDown: false,
+      }));
+
       guides.save();
       guides.beginPath();
       guides.rect(0, 0, size, size);
@@ -129,7 +164,7 @@ function GarmentCanvas({
 
     paint();
     return onImagesReady(paint);
-  }, [design, revision, garment, size, isJersey]);
+  }, [design, revision, garment, size, isJersey, silhouettes]);
 
   return (
     <figure className="flex min-w-0 flex-col items-center gap-2">
