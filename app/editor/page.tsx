@@ -269,8 +269,8 @@ export default function EditorPage() {
                   aria-pressed={freeOrbit}
                   title={
                     freeOrbit
-                      ? "Movimiento libre: podés inclinar la cámara. Clic para volver al giro horizontal."
-                      : "Giro horizontal: la prenda queda centrada. Clic para poder inclinar la cámara."
+                      ? "Movimiento libre: inclinás la cámara, Shift+arrastrar desplaza y la rueda hace zoom donde está el cursor. Clic para volver al giro horizontal."
+                      : "Giro horizontal: la prenda queda centrada. Clic para poder inclinar la cámara y desplazarte."
                   }
                   className={`flex items-center gap-1.5 rounded-md px-2 py-2 text-[11px] font-medium transition-colors ${
                     freeOrbit

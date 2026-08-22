@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
@@ -158,6 +158,46 @@ function Studio() {
   );
 }
 
+
+/**
+ * Shift mantenido, para pasar el arrastre izquierdo de rotar a desplazar.
+ *
+ * OrbitControls mapea acciones por botón del mouse y no tiene modificadores,
+ * así que la única vía es reasignar `mouseButtons.LEFT` mientras Shift está
+ * apretado. Se escucha en window y no en el canvas porque el foco puede
+ * estar en un panel del editor cuando el usuario aprieta la tecla.
+ *
+ * El listener de blur es necesario: si se suelta Shift con la ventana ya sin
+ * foco no llega el keyup y el paneo queda pegado.
+ */
+function useShiftHeld(active: boolean): boolean {
+  const [held, setHeld] = useState(false);
+
+  useEffect(() => {
+    if (!active) {
+      setHeld(false);
+      return;
+    }
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setHeld(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setHeld(false);
+    };
+    const blur = () => setHeld(false);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
+    };
+  }, [active]);
+
+  return held;
+}
+
 interface Props {
   design: DesignState;
   revision: number;
@@ -184,9 +224,12 @@ export function Viewer({
   onPickZone,
   onHoverZone,
 }: Props) {
+  const panning = useShiftHeld(!!freeOrbit);
+
   return (
     <Canvas
       shadows
+      style={panning ? { cursor: "move" } : undefined}
       dpr={[1, 2]}
       camera={{ position: [0, 0.05, 3.3], fov: 30 }}
       gl={{
@@ -241,7 +284,18 @@ export function Viewer({
 
       <OrbitControls
         makeDefault
-        enablePan={false}
+        /**
+         * Desplazar y hacer zoom al cursor sólo en movimiento libre. En giro
+         * horizontal los dos romperían lo único que ese modo garantiza, que
+         * es que la prenda quede centrada.
+         */
+        enablePan={!!freeOrbit}
+        zoomToCursor={!!freeOrbit}
+        mouseButtons={{
+          LEFT: panning ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE,
+          MIDDLE: THREE.MOUSE.DOLLY,
+          RIGHT: THREE.MOUSE.PAN,
+        }}
         minDistance={0.7}
         maxDistance={3.6}
         minPolarAngle={freeOrbit ? Math.PI * 0.15 : LOCKED_POLAR}
