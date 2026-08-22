@@ -29,13 +29,20 @@ const AZIMUTH: Record<ViewName, number> = {
   left: -Math.PI / 2,
 };
 
-/** Encuadre por prenda: a qué altura mirar y desde qué distancia. */
-const FRAMING: Record<KitFocus, { targetY: number; radius: number }> = {
-  all: { targetY: 0.02, radius: 3.55 },
-  jersey: { targetY: 0.44, radius: 2.05 },
-  shorts: { targetY: -0.02, radius: 1.4 },
-  socks: { targetY: -0.6, radius: 1.45 },
-};
+/**
+ * Fracción del alto (o del ancho) visible que debe ocupar la prenda.
+ *
+ * El encuadre no usa radios fijos por prenda: se mide la caja de las mallas
+ * visibles y se calcula la distancia. Así las cuatro vistas quedan igual de
+ * ajustadas con un solo número, y sobre todo no recorta las mangas en un
+ * viewport angosto — el fov es vertical, así que en una columna estrecha el
+ * ancho visible se achica y un radio fijo cortaría la prenda.
+ *
+ * El valor deja aire arriba y abajo a propósito: el visor tiene la fila de
+ * prendas encima y la de vistas debajo, y con la prenda al 90% el ruedo
+ * quedaba tapado por los botones.
+ */
+const FILL = 0.78;
 
 const ELEVATION = 0.09;
 
@@ -43,20 +50,55 @@ const ELEVATION = 0.09;
  * Ángulo polar del modo giratorio.
  *
  * OrbitControls no tiene un flag "sólo azimut", así que se bloquea igualando
- * el mínimo y el máximo. Sale de la misma ELEVATION que usa `positionFor`:
+ * el mínimo y el máximo. Sale de la misma ELEVATION que usa `directionFor`:
  * si fueran dos números distintos, entrar al modo giratorio daría un salto
  * de cámara al recortar el ángulo.
  */
 const LOCKED_POLAR = Math.PI / 2 - ELEVATION;
 
-function positionFor(view: ViewName, focus: KitFocus): THREE.Vector3 {
+/** Dirección unitaria desde el centro de la prenda hacia la cámara. */
+function directionFor(view: ViewName): THREE.Vector3 {
   const az = AZIMUTH[view];
-  const { targetY, radius } = FRAMING[focus];
   return new THREE.Vector3(
-    radius * Math.sin(az) * Math.cos(ELEVATION),
-    targetY + radius * Math.sin(ELEVATION),
-    radius * Math.cos(az) * Math.cos(ELEVATION),
+    Math.sin(az) * Math.cos(ELEVATION),
+    Math.sin(ELEVATION),
+    Math.cos(az) * Math.cos(ELEVATION),
   );
+}
+
+/**
+ * Caja de las prendas visibles y distancia para encuadrarlas.
+ *
+ * Devuelve null mientras no haya nada que medir: el GLB carga async, así que
+ * el primer intento puede caer antes de que exista la malla. Quien llama
+ * reintenta en el frame siguiente.
+ *
+ * Para el ancho se toma el mayor de X y Z porque la prenda se puede girar:
+ * encuadrar sólo con X dejaría la vista lateral corta.
+ */
+function frameVisible(
+  scene: THREE.Scene,
+  fovDeg: number,
+  aspect: number,
+): { center: THREE.Vector3; distance: number } | null {
+  const box = new THREE.Box3();
+  let found = false;
+  scene.traverse((o) => {
+    if (o.visible && o.userData?.garment) {
+      box.expandByObject(o);
+      found = true;
+    }
+  });
+  if (!found || box.isEmpty()) return null;
+
+  const size = box.getSize(new THREE.Vector3());
+  const halfFov = THREE.MathUtils.degToRad(fovDeg) / 2;
+  const forHeight = size.y / 2 / Math.tan(halfFov);
+  const forWidth = Math.max(size.x, size.z) / 2 / (Math.tan(halfFov) * aspect);
+  return {
+    center: box.getCenter(new THREE.Vector3()),
+    distance: Math.max(forHeight, forWidth) / FILL,
+  };
 }
 
 /** Interpola cámara y target hacia la vista/foco pedidos en vez de saltar. */
@@ -77,13 +119,13 @@ function ViewController({
   const goal = useRef<{ pos: THREE.Vector3; target: THREE.Vector3 } | null>(
     null,
   );
+  /** Hay que recalcular el encuadre en el próximo frame. */
+  const pending = useRef(true);
+  const size = useThree((s) => s.size);
 
   useEffect(() => {
-    goal.current = {
-      pos: positionFor(view, focus),
-      target: new THREE.Vector3(0, FRAMING[focus].targetY, 0),
-    };
-  }, [view, focus, nonce]);
+    pending.current = true;
+  }, [view, focus, nonce, size.width, size.height]);
 
   /**
    * Al volver de órbita libre a giratorio, endereza la cámara.
@@ -91,12 +133,14 @@ function ViewController({
    * Sin esto OrbitControls recorta el ángulo de golpe en el primer update y
    * se ve un salto. Se conservan el azimut y la distancia actuales y sólo se
    * corrige la inclinación: volver al modo giratorio no debería perder el
-   * lado de la prenda que estabas mirando.
+   * lado de la prenda que estabas mirando. El pivote es el target actual, así
+   * que también deshace el desplazamiento hecho con Shift.
    */
   const camera = useThree((s) => s.camera);
   useEffect(() => {
     if (freeOrbit) return;
-    const target = new THREE.Vector3(0, FRAMING[focus].targetY, 0);
+    pending.current = true;
+    const target = controls?.target?.clone() ?? new THREE.Vector3();
     const spherical = new THREE.Spherical().setFromVector3(
       camera.position.clone().sub(target),
     );
@@ -105,12 +149,27 @@ function ViewController({
       pos: new THREE.Vector3().setFromSpherical(spherical).add(target),
       target,
     };
-    // `focus` a propósito fuera de las dependencias: cambiar de prenda ya
-    // dispara el efecto de arriba, y meterlo acá pisaría ese encuadre.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [freeOrbit]);
 
   useFrame((state, delta) => {
+    if (pending.current) {
+      const framed = frameVisible(
+        state.scene,
+        (state.camera as THREE.PerspectiveCamera).fov,
+        state.size.width / Math.max(1, state.size.height),
+      );
+      if (framed) {
+        pending.current = false;
+        goal.current = {
+          pos: framed.center
+            .clone()
+            .add(directionFor(view).multiplyScalar(framed.distance)),
+          target: framed.center,
+        };
+      }
+    }
+
     const g = goal.current;
     if (!g) return;
     const k = 1 - Math.pow(0.0015, delta);
@@ -160,15 +219,15 @@ function Studio() {
 
 
 /**
- * Shift mantenido, para pasar el arrastre izquierdo de rotar a desplazar.
+ * Shift mantenido, sólo para mostrar el cursor de desplazar.
  *
- * OrbitControls mapea acciones por botón del mouse y no tiene modificadores,
- * así que la única vía es reasignar `mouseButtons.LEFT` mientras Shift está
- * apretado. Se escucha en window y no en el canvas porque el foco puede
- * estar en un panel del editor cuando el usuario aprieta la tecla.
+ * El gesto lo maneja OrbitControls por su cuenta; esto es la pista visual de
+ * que Shift cambió lo que va a hacer el arrastre. Se escucha en window y no
+ * en el canvas porque el foco puede estar en un panel del editor cuando el
+ * usuario aprieta la tecla.
  *
  * El listener de blur es necesario: si se suelta Shift con la ventana ya sin
- * foco no llega el keyup y el paneo queda pegado.
+ * foco no llega el keyup y el cursor queda mostrando desplazamiento.
  */
 function useShiftHeld(active: boolean): boolean {
   const [held, setHeld] = useState(false);
@@ -206,7 +265,6 @@ interface Props {
    */
   freeOrbit?: boolean;
   onPickZone: (zone: ZoneId) => void;
-  onHoverZone: (zone: ZoneId | null) => void;
 }
 
 export function Viewer({
@@ -217,7 +275,6 @@ export function Viewer({
   viewNonce,
   focus,
   onPickZone,
-  onHoverZone,
 }: Props) {
   const panning = useShiftHeld(!!freeOrbit);
 
@@ -266,7 +323,6 @@ export function Viewer({
         revision={revision}
         focus={focus}
         onPickZone={onPickZone}
-        onHoverZone={onHoverZone}
       />
 
       <ContactShadows
@@ -286,13 +342,15 @@ export function Viewer({
          */
         enablePan={!!freeOrbit}
         zoomToCursor={!!freeOrbit}
-        mouseButtons={{
-          LEFT: panning ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE,
-          MIDDLE: THREE.MOUSE.DOLLY,
-          RIGHT: THREE.MOUSE.PAN,
-        }}
-        minDistance={0.7}
-        maxDistance={3.6}
+        /**
+         * Shift+arrastrar desplaza y no hace falta mapearlo: con
+         * mouseButtons.LEFT en ROTATE, OrbitControls ya deriva a pan cuando
+         * hay ctrl, meta o shift. Reasignar LEFT a PAN mientras Shift está
+         * apretado lo INVIERTE — el caso MOUSE.PAN con shift hace rotate —
+         * y el gesto termina girando la cámara.
+         */
+        minDistance={0.3}
+        maxDistance={6}
         minPolarAngle={freeOrbit ? Math.PI * 0.15 : LOCKED_POLAR}
         maxPolarAngle={freeOrbit ? Math.PI * 0.85 : LOCKED_POLAR}
         enableDamping

@@ -62,7 +62,6 @@ export function SharedView({ design }: { design: DesignState }) {
               viewNonce={viewNonce}
               focus="all"
               onPickZone={() => {}}
-              onHoverZone={() => {}}
             />
             <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1 rounded-lg bg-ink-800/90 p-1 backdrop-blur">
               {(Object.keys(VIEW_LABELS) as ViewName[]).map((v) => (

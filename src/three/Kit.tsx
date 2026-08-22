@@ -52,7 +52,6 @@ interface GarmentMeshProps {
   /** Si la malla no trae cuello como pieza, se pinta la cinta en la textura. */
   collarBand?: CollarBandSpec | null;
   onPickZone?: (zone: ZoneId) => void;
-  onHoverZone?: (zone: ZoneId | null) => void;
 }
 
 function GarmentMesh({
@@ -63,7 +62,6 @@ function GarmentMesh({
   visible,
   collarBand,
   onPickZone,
-  onHoverZone,
 }: GarmentMeshProps) {
   const texture = useGarmentTexture(design, revision, garment, {
     paintedCollar: collarBand ?? null,
@@ -78,20 +76,15 @@ function GarmentMesh({
     }
   };
 
-  const handleMove = (event: ThreeEvent<PointerEvent>) => {
-    onHoverZone?.(zoneAtUv(garment, event.uv));
-  };
-
   return (
     <mesh
       geometry={geometry}
       position={[0, layout.y, layout.z]}
       visible={visible}
+      userData={{ garment }}
       castShadow
       receiveShadow
       onClick={visible ? handleClick : undefined}
-      onPointerMove={visible ? handleMove : undefined}
-      onPointerOut={visible ? () => onHoverZone?.(null) : undefined}
     >
       <meshPhysicalMaterial
         map={texture}
@@ -122,10 +115,9 @@ interface Props {
   revision: number;
   focus: KitFocus;
   onPickZone?: (zone: ZoneId) => void;
-  onHoverZone?: (zone: ZoneId | null) => void;
 }
 
-export function Kit({ design, revision, focus, onPickZone, onHoverZone }: Props) {
+export function Kit({ design, revision, focus, onPickZone }: Props) {
 
   /**
    * Camiseta: GLB del editor open source, con sus UVs remapeadas a nuestro
@@ -143,7 +135,7 @@ export function Kit({ design, revision, focus, onPickZone, onHoverZone }: Props)
   useEffect(() => () => socksGeo.dispose(), [socksGeo]);
 
   const show = (g: GarmentId) => focus === "all" || focus === g;
-  const common = { design, revision, onPickZone, onHoverZone };
+  const common = { design, revision, onPickZone };
 
   return (
     <group position={[0, 0.02, 0]}>

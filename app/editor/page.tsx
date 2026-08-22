@@ -83,7 +83,6 @@ export default function EditorPage() {
   const [mode, setMode] = useState<Mode>("3d");
   const [view, setView] = useState<ViewName>("front");
   const [viewNonce, setViewNonce] = useState(0);
-  const [hovered, setHovered] = useState<ZoneId | null>(null);
   const [freeOrbit, setFreeOrbit] = useState(false);
 
   const [sharing, setSharing] = useState(false);
@@ -98,9 +97,6 @@ export default function EditorPage() {
     setViewNonce((n) => n + 1);
   };
 
-  const handleHover = useCallback((zone: ZoneId | null) => {
-    setHovered((prev) => (prev === zone ? prev : zone));
-  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -237,7 +233,6 @@ export default function EditorPage() {
                 viewNonce={viewNonce}
                 focus={focus}
                 onPickZone={selectZone}
-                onHoverZone={handleHover}
               />
 
               {/* Selector de prenda: define qué se encuadra en el visor. */}
@@ -303,12 +298,6 @@ export default function EditorPage() {
                   </span>
                 </button>
               </div>
-
-              {hovered ? (
-                <div className="pointer-events-none absolute left-1/2 top-5 -translate-x-1/2 rounded-full bg-ink-800/90 px-3 py-1 text-xs text-ink-100 backdrop-blur">
-                  {ZONE_LABELS[hovered]} — clic para editar
-                </div>
-              ) : null}
 
               <div className="pointer-events-none absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1 rounded-lg bg-ink-800/90 p-1 backdrop-blur">
                 {(Object.keys(VIEW_LABELS) as ViewName[]).map((v) => (
