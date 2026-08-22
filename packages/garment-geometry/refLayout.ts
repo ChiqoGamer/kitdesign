@@ -36,13 +36,21 @@ export const REF_UV_LAYOUT = {
 } as const;
 
 /**
- * Ubicación de la abertura del escote dentro del rectángulo del torso, en
- * coordenadas normalizadas (0..1) — el centro del ancho, sobre el borde
- * superior, con el radio del agujero medido en las UVs del archivo.
+ * Abertura del escote, en coordenadas normalizadas al rectángulo del torso.
+ *
+ * Medido rasterizando las islas UV del propio GLB y buscando por flood fill
+ * el hueco que queda sin cubrir en el centro. No está estimado a ojo: los
+ * valores anteriores tenían el radio del frente a poco más de la mitad del
+ * real, así que la cinta se dibujaba DENTRO del agujero, donde no hay
+ * geometría que la muestre, y el cuello sólo se veía pintado por dentro.
+ *
+ * El frente y la espalda no comparten el radio vertical: el escote baja más
+ * adelante que atrás, así que el hueco no queda centrado en la costura del
+ * hombro y cada mitad necesita el suyo.
  */
 export const REF_NECK_HOLE = {
-  cx: 0.5,
-  cy: 1.0,
-  rx: 0.082,
-  ry: 0.042,
+  cx: 0.499,
+  rx: 0.104,
+  ryFront: 0.075,
+  ryBack: 0.04,
 };

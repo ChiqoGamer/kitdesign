@@ -18,6 +18,7 @@ import {
 } from "@core/layers";
 import { PAINTERS, type PaintContext } from "./patterns";
 import { getImage } from "./images";
+import { REF_NECK_HOLE } from "@geom/refLayout";
 import { drawImportedPiece } from "./importTexture";
 
 /**
@@ -51,27 +52,18 @@ function toPixels(piece: Piece, size: number, bleed: number) {
 }
 
 /**
- * Ubicación del escote dentro del rectángulo del torso, en coordenadas
- * normalizadas, y grosor de la cinta como fracción de la altura del rect.
- * Sólo aplica a mallas cuyo cuello no es una pieza aparte (ver
- * `paintedCollar`).
+ * Grosor por defecto de la cinta de cuello, si el diseño no trae uno.
  */
-export interface CollarBandSpec {
-  cx: number;
-  cy: number;
-  rx: number;
-  ry: number;
-  width: number;
-}
+const DEFAULT_COLLAR_WIDTH = 0.028;
 
-export interface RenderOptions {
-  /**
-   * Cuando la malla no trae cinta de cuello como pieza propia, se pinta un
-   * anillo alrededor del escote. Dibujarlo en la textura da un borde suave
-   * y un grosor exacto — reclasificar geometría dejaba el borde aserrado
-   * sobre una malla low-poly.
-   */
-  paintedCollar?: CollarBandSpec | null;
+/** Anillo del escote, normalizado al rectángulo del torso. */
+interface CollarBandSpec {
+  cx: number;
+  rx: number;
+  /** El escote baja más adelante que atrás: cada mitad lleva su radio. */
+  ryFront: number;
+  ryBack: number;
+  width: number;
 }
 
 export function renderGarment(
@@ -79,7 +71,6 @@ export function renderGarment(
   state: DesignState,
   garment: GarmentId,
   size?: number,
-  options: RenderOptions = {},
 ): void {
   const atlas: GarmentAtlas = GARMENT_ATLASES[garment];
   const px = size ?? atlas.size;
@@ -155,9 +146,20 @@ export function renderGarment(
     }
   }
 
-  // Cinta de cuello pintada (mallas sin pieza de cuello propia).
-  if (garment === "jersey" && options.paintedCollar && !imported) {
-    paintCollarBand(ctx, state, atlas, px, options.paintedCollar);
+  /**
+   * Cinta de cuello. La malla trae como pieza propia sólo el labio interior,
+   * así que el borde de afuera hay que pintarlo acá.
+   *
+   * Lo resuelve el renderer y no el que llama: antes venía por `options` y
+   * ninguno de los cuatro callers lo pasaba, así que la cinta no se dibujaba
+   * en ningún lado y el cuello sólo se veía pintado por dentro. Con un solo
+   * modelo de camiseta no hay nada que decidir afuera.
+   */
+  if (garment === "jersey" && !imported) {
+    paintCollarBand(ctx, state, atlas, px, {
+      ...REF_NECK_HOLE,
+      width: state.kit.construction.collarWidth ?? DEFAULT_COLLAR_WIDTH,
+    });
   }
 
   // Paneles (hombro / laterales) por encima de la base, sólo en la camiseta.
@@ -373,9 +375,11 @@ function paintCollarBand(
     if (piece.id !== "front" && piece.id !== "back") continue;
     const r = exactRect(piece, px);
     const cx = r.x + spec.cx * r.w;
-    const cy = r.y + (1 - spec.cy) * r.h; // cy=1 es el escote (arriba)
+    // El escote cae en el borde superior del rect: el remapeo lleva ahí la
+    // costura del hombro, así que del anillo sólo entra la mitad de abajo.
+    const cy = r.y;
     const rxIn = spec.rx * r.w;
-    const ryIn = spec.ry * r.h;
+    const ryIn = (piece.id === "front" ? spec.ryFront : spec.ryBack) * r.h;
     const band = spec.width * r.h;
 
     ctx.save();
