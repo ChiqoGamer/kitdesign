@@ -39,6 +39,16 @@ const FRAMING: Record<KitFocus, { targetY: number; radius: number }> = {
 
 const ELEVATION = 0.09;
 
+/**
+ * Ángulo polar del modo giratorio.
+ *
+ * OrbitControls no tiene un flag "sólo azimut", así que se bloquea igualando
+ * el mínimo y el máximo. Sale de la misma ELEVATION que usa `positionFor`:
+ * si fueran dos números distintos, entrar al modo giratorio daría un salto
+ * de cámara al recortar el ángulo.
+ */
+const LOCKED_POLAR = Math.PI / 2 - ELEVATION;
+
 function positionFor(view: ViewName, focus: KitFocus): THREE.Vector3 {
   const az = AZIMUTH[view];
   const { targetY, radius } = FRAMING[focus];
@@ -54,10 +64,12 @@ function ViewController({
   view,
   focus,
   nonce,
+  freeOrbit,
 }: {
   view: ViewName;
   focus: KitFocus;
   nonce: number;
+  freeOrbit?: boolean;
 }) {
   const controls = useThree((s) => s.controls) as
     | { target?: THREE.Vector3; update?: () => void }
@@ -72,6 +84,31 @@ function ViewController({
       target: new THREE.Vector3(0, FRAMING[focus].targetY, 0),
     };
   }, [view, focus, nonce]);
+
+  /**
+   * Al volver de órbita libre a giratorio, endereza la cámara.
+   *
+   * Sin esto OrbitControls recorta el ángulo de golpe en el primer update y
+   * se ve un salto. Se conservan el azimut y la distancia actuales y sólo se
+   * corrige la inclinación: volver al modo giratorio no debería perder el
+   * lado de la prenda que estabas mirando.
+   */
+  const camera = useThree((s) => s.camera);
+  useEffect(() => {
+    if (freeOrbit) return;
+    const target = new THREE.Vector3(0, FRAMING[focus].targetY, 0);
+    const spherical = new THREE.Spherical().setFromVector3(
+      camera.position.clone().sub(target),
+    );
+    spherical.phi = LOCKED_POLAR;
+    goal.current = {
+      pos: new THREE.Vector3().setFromSpherical(spherical).add(target),
+      target,
+    };
+    // `focus` a propósito fuera de las dependencias: cambiar de prenda ya
+    // dispara el efecto de arriba, y meterlo acá pisaría ese encuadre.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freeOrbit]);
 
   useFrame((state, delta) => {
     const g = goal.current;
@@ -129,6 +166,12 @@ interface Props {
   focus: KitFocus;
   /** Usar la malla de referencia (GLB) en vez de la procedural. */
   refMesh?: boolean;
+  /**
+   * Órbita libre. Por defecto el visor gira sólo en horizontal y la prenda
+   * queda centrada, que es lo que se quiere para mirar un diseño; la órbita
+   * libre deja además inclinar la cámara, útil para revisar hombros y cuello.
+   */
+  freeOrbit?: boolean;
   onPickZone: (zone: ZoneId) => void;
   onHoverZone: (zone: ZoneId | null) => void;
 }
@@ -137,6 +180,7 @@ export function Viewer({
   design,
   revision,
   refMesh,
+  freeOrbit,
   view,
   viewNonce,
   focus,
@@ -204,12 +248,17 @@ export function Viewer({
         enablePan={false}
         minDistance={0.7}
         maxDistance={3.6}
-        minPolarAngle={Math.PI * 0.15}
-        maxPolarAngle={Math.PI * 0.85}
+        minPolarAngle={freeOrbit ? Math.PI * 0.15 : LOCKED_POLAR}
+        maxPolarAngle={freeOrbit ? Math.PI * 0.85 : LOCKED_POLAR}
         enableDamping
         dampingFactor={0.08}
       />
-      <ViewController view={view} focus={focus} nonce={viewNonce} />
+      <ViewController
+        view={view}
+        focus={focus}
+        nonce={viewNonce}
+        freeOrbit={freeOrbit}
+      />
     </Canvas>
   );
 }

@@ -67,6 +67,7 @@ export default function EditorPage() {
   const [viewNonce, setViewNonce] = useState(0);
   const [hovered, setHovered] = useState<ZoneId | null>(null);
   const [refMesh, setRefMesh] = useState(true);
+  const [freeOrbit, setFreeOrbit] = useState(false);
 
   const [sharing, setSharing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -231,6 +232,7 @@ export default function EditorPage() {
             <>
               <Viewer
                 refMesh={refMesh}
+                freeOrbit={freeOrbit}
                 design={design}
                 revision={revision}
                 view={view}
@@ -264,6 +266,41 @@ export default function EditorPage() {
 
               <div className="absolute bottom-5 right-5 flex items-center gap-3">
                 <button
+                  onClick={() => setFreeOrbit((v) => !v)}
+                  className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] transition-colors ${
+                    freeOrbit
+                      ? "border-accent/60 bg-accent/10 text-accent"
+                      : "border-ink-700 text-ink-400 hover:text-ink-100"
+                  }`}
+                  title={
+                    freeOrbit
+                      ? "Volver al giro horizontal, con la prenda centrada"
+                      : "Permitir inclinar la cámara para ver hombros y cuello"
+                  }
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  >
+                    {freeOrbit ? (
+                      <>
+                        <circle cx="12" cy="12" r="8" />
+                        <path d="M12 4v16M4 12h16" />
+                      </>
+                    ) : (
+                      <>
+                        <ellipse cx="12" cy="12" rx="9" ry="3.5" />
+                        <path d="M5 15l-2 2M19 15l2 2" />
+                      </>
+                    )}
+                  </svg>
+                  {freeOrbit ? "Movimiento libre" : "Giro horizontal"}
+                </button>
+                <button
                   onClick={() => setRefMesh((v) => !v)}
                   className={`rounded-md border px-2.5 py-1.5 text-[11px] transition-colors ${
                     refMesh
@@ -275,7 +312,9 @@ export default function EditorPage() {
                   {refMesh ? "Malla: referencia" : "Malla: procedural"}
                 </button>
                 <span className="pointer-events-none text-[11px] text-ink-600">
-                  Arrastrá para rotar · rueda para zoom
+                  {freeOrbit
+                    ? "Arrastrá para orbitar · rueda para zoom"
+                    : "Arrastrá para girar · rueda para zoom"}
                 </span>
               </div>
             </>
