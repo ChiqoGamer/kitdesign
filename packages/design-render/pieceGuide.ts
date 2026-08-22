@@ -80,9 +80,32 @@ export function renderPieceGuide(
   ctx: CanvasRenderingContext2D,
   tris: PieceTriangles,
   size: number,
-  { labels = true }: { labels?: boolean } = {},
+  { labels = false }: { labels?: boolean } = {},
 ): void {
   ctx.clearRect(0, 0, size, size);
+
+  /**
+   * Primera pasada: el mismo color trazado con línea gruesa, que engorda
+   * cada molde hacia afuera.
+   *
+   * Sin esto el relleno termina justo en el borde del triángulo, el borde
+   * queda antialiaseado contra transparente y al mapearlo sobre la prenda
+   * aparece una línea oscura en el hombro y la sisa: el filtrado bilineal
+   * mezcla con el vacío. Va en una pasada aparte de los rellenos para que
+   * el engorde de una pieza no se coma el color de la vecina.
+   */
+  const spill = Math.max(2, size * 0.004);
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.lineWidth = spill * 2;
+  for (const id of ORDER) {
+    const t = tris[id];
+    if (!t?.length) continue;
+    tracePiece(ctx, t, size);
+    ctx.strokeStyle = PIECE_STYLES[id].fill;
+    ctx.stroke();
+  }
+
   for (const id of ORDER) {
     const t = tris[id];
     if (!t?.length) continue;
@@ -90,6 +113,9 @@ export function renderPieceGuide(
     ctx.fillStyle = PIECE_STYLES[id].fill;
     ctx.fill();
   }
+
+  // Los rótulos son para mirar en pantalla. En el archivo descargado se
+  // estamparían sobre la tela, así que por defecto no van.
   if (labels) drawLabels(ctx, tris, size);
 }
 

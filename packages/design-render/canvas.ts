@@ -105,10 +105,6 @@ export function renderGarment(
     const fill = state.kit.zones[piece.zone];
     const rect = toPixels(piece, px, BLEED);
 
-    if (imported && drawImportedPiece(ctx, imported, piece, rect, BLEED)) {
-      continue; // la textura manda: no pintamos el patrón debajo
-    }
-
     if (fill.hidden) continue; // zona oculta: queda el color de fondo
     const painter = PAINTERS[fill.pattern];
 
@@ -140,6 +136,23 @@ export function renderGarment(
     ctx.clip();
     painter(context);
     ctx.restore();
+  }
+
+  /**
+   * La textura importada va encima del patrón, no en su lugar.
+   *
+   * Reemplazarlo dejaba agujeros: donde el archivo es transparente el atlas
+   * quedaba transparente y la prenda se veía negra. Pasa con cualquier PNG
+   * con alpha, y sobre todo en el borde de las piezas, que viene
+   * antialiaseado — de ahí la línea dentada en el hombro y la sisa.
+   * Componer encima hace que lo transparente caiga sobre el diseño de
+   * abajo, que es lo que uno espera ver.
+   */
+  if (imported) {
+    for (const piece of atlas.pieces) {
+      const rect = toPixels(piece, px, BLEED);
+      drawImportedPiece(ctx, imported, piece, rect, BLEED);
+    }
   }
 
   // Cinta de cuello pintada (mallas sin pieza de cuello propia).

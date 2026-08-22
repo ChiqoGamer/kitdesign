@@ -149,8 +149,10 @@ export function ExportDialog({
           La presentación sirve para mandar por WhatsApp o publicar; la
           captura 3D toma la vista tal como está en pantalla. La plantilla
           trae el diseño en el layout del modelo y la guía trae los moldes
-          vacíos con su nombre: las dos se pintan en cualquier editor y se
-          vuelven a subir con “Importar textura”.
+          vacíos, un color por parte: las dos se pintan en cualquier editor y
+          se vuelven a subir con “Importar textura”. Van sin rótulos, para no
+          estamparlos sobre la tela; los nombres de cada molde están en la
+          vista Textura.
         </p>
 
         <div className="mt-4 flex gap-1 rounded-lg bg-ink-800 p-1">
