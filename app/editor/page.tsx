@@ -230,7 +230,6 @@ export default function EditorPage() {
           {mode === "3d" ? (
             <>
               <Viewer
-                refMesh
                 freeOrbit={freeOrbit}
                 design={design}
                 revision={revision}

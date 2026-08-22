@@ -56,7 +56,6 @@ export function SharedView({ design }: { design: DesignState }) {
         {mode === "3d" ? (
           <>
             <Viewer
-              refMesh
               design={design}
               revision={0}
               view={view}

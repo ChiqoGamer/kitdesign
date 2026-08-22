@@ -164,8 +164,6 @@ interface Props {
   view: ViewName;
   viewNonce: number;
   focus: KitFocus;
-  /** Usar la malla de referencia (GLB) en vez de la procedural. */
-  refMesh?: boolean;
   /**
    * Órbita libre. Por defecto el visor gira sólo en horizontal y la prenda
    * queda centrada, que es lo que se quiere para mirar un diseño; la órbita
@@ -179,7 +177,6 @@ interface Props {
 export function Viewer({
   design,
   revision,
-  refMesh,
   freeOrbit,
   view,
   viewNonce,
@@ -227,7 +224,6 @@ export function Viewer({
       </Suspense>
 
       <Kit
-        refMesh={refMesh}
         design={design}
         revision={revision}
         focus={focus}
