@@ -173,29 +173,24 @@ function Studio() {
 function useShiftHeld(active: boolean): boolean {
   const [held, setHeld] = useState(false);
 
+  // Los listeners van siempre montados y el modo se aplica al devolver el
+  // valor. Apagarlos según `active` obligaba a resetear el estado dentro del
+  // efecto, y además dejaba un valor rancio: si se sale del modo libre con
+  // Shift apretado, al volver seguiría creyendo que está apretado.
   useEffect(() => {
-    if (!active) {
-      setHeld(false);
-      return;
-    }
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "Shift") setHeld(true);
-    };
-    const up = (e: KeyboardEvent) => {
-      if (e.key === "Shift") setHeld(false);
-    };
+    const onKey = (e: KeyboardEvent) => setHeld(e.shiftKey);
     const blur = () => setHeld(false);
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKey);
     window.addEventListener("blur", blur);
     return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKey);
       window.removeEventListener("blur", blur);
     };
-  }, [active]);
+  }, []);
 
-  return held;
+  return active && held;
 }
 
 interface Props {
