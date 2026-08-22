@@ -125,6 +125,93 @@ function findIslands(geo: THREE.BufferGeometry): Island[] {
 const norm = (x: number, a: number, b: number) =>
   b - a < 1e-9 && b - a > -1e-9 ? 0 : Math.min(1, Math.max(0, (x - a) / (b - a)));
 
+
+const SIDE_NONE = 0;
+const SIDE_FRONT = 1;
+const SIDE_BACK = 2;
+
+/**
+ * Separa el torso en frente y espalda por TRIÁNGULO, no por vértice.
+ *
+ * El desplegado del modelo trae el torso como una sola isla partida por el
+ * escote en v = 0.5, pero nuestro atlas manda cada mitad a un rectángulo
+ * distinto y lejano. Asignando por vértice, los pocos triángulos que cruzan
+ * esa línea quedan con vértices en los dos rectángulos y barren todo lo que
+ * hay en el medio del atlas: eso es la línea fina que aparecía sobre la
+ * costura del hombro, a los lados del cuello.
+ *
+ * La solución es duplicar los vértices de esos triángulos para que cada uno
+ * caiga entero de un lado. El duplicado conserva su v original, que queda
+ * del lado equivocado, y `norm` lo recorta al borde del rect — o sea al
+ * propio escote, que es exactamente donde debe seguir la tela.
+ *
+ * Devuelve, por vértice, de qué lado quedó (o SIDE_NONE si no es torso).
+ */
+function splitTorsoSeam(
+  geo: THREE.BufferGeometry,
+  torsoVerts: number[],
+  neckV: number,
+): Int8Array {
+  const index = geo.getIndex();
+  const uv = geo.getAttribute("uv") as THREE.BufferAttribute;
+  const base = geo.getAttribute("position").count;
+  if (!index) return new Int8Array(base);
+
+  const isTorso = new Uint8Array(base);
+  for (const i of torsoVerts) isTorso[i] = 1;
+  const sideOf = (i: number) => (uv.getY(i) >= neckV ? SIDE_FRONT : SIDE_BACK);
+
+  const idx = Array.from(index.array as ArrayLike<number>);
+  const dupes = new Map<string, number>();
+  const dupeSrc: number[] = [];
+  const dupeSide: number[] = [];
+
+  for (let t = 0; t < idx.length; t += 3) {
+    if (!isTorso[idx[t]]) continue;
+    const s = [sideOf(idx[t]), sideOf(idx[t + 1]), sideOf(idx[t + 2])];
+    if (s[0] === s[1] && s[1] === s[2]) continue;
+    const fronts = s.filter((x) => x === SIDE_FRONT).length;
+    const target = fronts >= 2 ? SIDE_FRONT : SIDE_BACK;
+    for (let k = 0; k < 3; k++) {
+      if (s[k] === target) continue;
+      const src = idx[t + k];
+      const key = `${src}:${target}`;
+      let nv = dupes.get(key);
+      if (nv === undefined) {
+        nv = base + dupeSrc.length;
+        dupes.set(key, nv);
+        dupeSrc.push(src);
+        dupeSide.push(target);
+      }
+      idx[t + k] = nv;
+    }
+  }
+
+  const total = base + dupeSrc.length;
+  const side = new Int8Array(total);
+  for (const i of torsoVerts) side[i] = sideOf(i);
+  for (let d = 0; d < dupeSrc.length; d++) side[base + d] = dupeSide[d];
+
+  if (dupeSrc.length) {
+    for (const name of Object.keys(geo.attributes)) {
+      const attr = geo.getAttribute(name) as THREE.BufferAttribute;
+      const n = attr.itemSize;
+      const src = attr.array as Float32Array;
+      const grown = new Float32Array(total * n);
+      grown.set(src);
+      for (let d = 0; d < dupeSrc.length; d++) {
+        const from = dupeSrc[d] * n;
+        const to = (base + d) * n;
+        for (let c = 0; c < n; c++) grown[to + c] = src[from + c];
+      }
+      geo.setAttribute(name, new THREE.BufferAttribute(grown, n));
+    }
+    geo.setIndex(idx);
+  }
+
+  return side;
+}
+
 /**
  * Convierte el GLB en una geometría lista para el editor: LOD más
  * detallado, sin skinning, UVs remapeadas a nuestro atlas con cinta de
@@ -174,15 +261,22 @@ export function prepareRefGeometry(
     const front = PIECE_BY_ID.front.rect;
     const back = PIECE_BY_ID.back.rect;
 
-    // Torso: escote en la fila superior del rect, ruedos abajo.
-    for (const i of torso.verts) {
-      const v = uv.getY(i);
-      const isFront = v >= 0.5;
+    // Torso: escote en la fila superior del rect, ruedos abajo. Los
+    // triángulos que cruzan el escote se separan antes, o quedarían con
+    // vértices en los dos rectángulos.
+    const beforeSplit = geo.getAttribute("position").count;
+    const side = splitTorsoSeam(geo, torso.verts, 0.5);
+    const seamDupes = geo.getAttribute("position").count - beforeSplit;
+    const tuv = geo.getAttribute("uv") as THREE.BufferAttribute;
+    for (let i = 0; i < side.length; i++) {
+      if (side[i] === SIDE_NONE) continue;
+      const isFront = side[i] === SIDE_FRONT;
       const r = isFront ? front : back;
+      const v = tuv.getY(i);
       const fv = isFront ? norm(v, torso.v1, 0.5) : norm(v, torso.v0, 0.5);
-      const raw = norm(uv.getX(i), torso.u0, torso.u1);
+      const raw = norm(tuv.getX(i), torso.u0, torso.u1);
       const fu = isFront ? raw : 1 - raw;
-      uv.setXY(i, r.x + fu * r.w, r.y + fv * r.h);
+      tuv.setXY(i, r.x + fu * r.w, r.y + fv * r.h);
     }
 
     /**
@@ -196,9 +290,9 @@ export function prepareRefGeometry(
       const isLeft = g.cx < 0;
       const r = isLeft ? PIECE_BY_ID.sleeveL.rect : PIECE_BY_ID.sleeveR.rect;
       for (const i of g.verts) {
-        const raw = norm(uv.getX(i), g.u0, g.u1);
+        const raw = norm(tuv.getX(i), g.u0, g.u1);
         const fu = isLeft ? 1 - raw : raw;
-        uv.setXY(i, r.x + fu * r.w, r.y + norm(uv.getY(i), g.v0, g.v1) * r.h);
+        tuv.setXY(i, r.x + fu * r.w, r.y + norm(tuv.getY(i), g.v0, g.v1) * r.h);
       }
     }
 
@@ -206,20 +300,21 @@ export function prepareRefGeometry(
     if (lip) {
       const r = PIECE_BY_ID.collar.rect;
       for (const i of lip.verts) {
-        uv.setXY(
+        tuv.setXY(
           i,
-          r.x + norm(uv.getX(i), lip.u0, lip.u1) * r.w,
-          r.y + norm(uv.getY(i), lip.v0, lip.v1) * r.h,
+          r.x + norm(tuv.getX(i), lip.u0, lip.u1) * r.w,
+          r.y + norm(tuv.getY(i), lip.v0, lip.v1) * r.h,
         );
       }
     }
-    uv.needsUpdate = true;
+    tuv.needsUpdate = true;
 
     if (process.env.NODE_ENV !== "production") {
       console.log(
         `[REF] islas=${islands.length} torso=${torso.verts.length}` +
           ` mangas=${sleeves.map((g) => g.verts.length).join("/")}` +
-          ` bordeEscote=${lip ? lip.verts.length : "no"}`,
+          ` bordeEscote=${lip ? lip.verts.length : "no"}` +
+          ` costuraHombro=${seamDupes} vértices duplicados`,
       );
     }
   }
