@@ -42,6 +42,24 @@ const SECTIONS = [
   { id: "confeccion", label: "Confección", icon: "M6 4l6 5 6-5v16H6z" },
 ];
 
+/**
+ * Siluetas de prenda para el selector del visor.
+ *
+ * Van rellenas y no con trazo: a 16 px un contorno de camiseta se empasta y
+ * deja de leerse, mientras que la silueta se reconoce por la forma.
+ */
+const FOCUS_ICONS: Record<GarmentId | "all", string> = {
+  all:
+    "M9.2 2.2 6.4 3.6 4.6 7.1 6.6 8.2 7.4 6.8v5.6h9.2V6.8l.8 1.4 2-1.1-1.8-3.5-2.8-1.4c-.6 1.2-1.7 1.7-2.8 1.7s-2.2-.5-2.8-1.7z" +
+    "M7.5 13.9h9l.4 7.9h-3.8L12 17.9l-1.1 3.9H7.1z",
+  jersey:
+    "M9 3 5.5 4.8 3.2 9.2 5.8 10.6 6.8 8.8V21h10.4V8.8l1 1.8 2.6-1.4-2.3-4.4L15 3c-.8 1.6-2.1 2.2-3 2.2S9.8 4.6 9 3z",
+  shorts: "M5 4h14l.7 15.8h-6L12 12.6l-1.7 7.2h-6z",
+  socks:
+    "M6.2 3h3.4v9.4c0 2.2-1.2 3.6-3.1 3.6H4v-3.4h1.8c.3 0 .4-.2.4-.7z" +
+    "M12.8 3h3.4v9.4c0 2.2-1.2 3.6-3.1 3.6h-2.5v-3.4h1.8c.3 0 .4-.2.4-.7z",
+};
+
 const FOCUS_TABS: { id: GarmentId | "all"; label: string }[] = [
   { id: "all", label: "Equipación" },
   ...GARMENT_IDS.map((g) => ({ id: g, label: GARMENT_LABELS[g] })),
@@ -206,24 +224,6 @@ export default function EditorPage() {
             </button>
           ))}
 
-          <div className="mt-auto px-2 pb-1 pt-4">
-            <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.13em] text-ink-500">
-              Prenda
-            </div>
-            {FOCUS_TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setFocus(t.id)}
-                className={`mb-0.5 block w-full rounded-md px-3 py-2 text-left text-[13px] transition-colors ${
-                  focus === t.id
-                    ? "bg-ink-700 text-ink-50"
-                    : "text-ink-400 hover:bg-ink-800 hover:text-ink-100"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
         </nav>
 
         {/* ── Visor ────────────────────────────────────────────────── */}
@@ -241,6 +241,28 @@ export default function EditorPage() {
                 onPickZone={selectZone}
                 onHoverZone={handleHover}
               />
+
+              {/* Selector de prenda: define qué se encuadra en el visor. */}
+              <div className="absolute left-5 top-5 flex gap-1 rounded-lg bg-ink-800/90 p-1 backdrop-blur">
+                {FOCUS_TABS.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setFocus(t.id)}
+                    aria-label={t.label}
+                    aria-pressed={focus === t.id}
+                    title={t.label}
+                    className={`rounded-md p-2 transition-colors ${
+                      focus === t.id
+                        ? "bg-ink-700 text-accent"
+                        : "text-ink-400 hover:bg-ink-700/60 hover:text-ink-100"
+                    }`}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+                      <path d={FOCUS_ICONS[t.id]} />
+                    </svg>
+                  </button>
+                ))}
+              </div>
 
               {hovered ? (
                 <div className="pointer-events-none absolute left-1/2 top-5 -translate-x-1/2 rounded-full bg-ink-800/90 px-3 py-1 text-xs text-ink-100 backdrop-blur">
