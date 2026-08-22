@@ -22,7 +22,7 @@ import { REF_UV_LAYOUT, type UvRegion } from "@geom/refLayout";
  */
 
 /** Cómo cae una pieza de nuestro atlas dentro de la plantilla de origen. */
-interface PieceMapping {
+export interface PieceMapping {
   region: UvRegion;
   /** El remapeo invierte u en esta pieza (espalda y manga izquierda). */
   flipX: boolean;
@@ -38,7 +38,12 @@ interface PieceMapping {
 
 const { torso, torsoNeckV, sleeveL, sleeveR, collar } = REF_UV_LAYOUT;
 
-const MAPPING: Record<string, PieceMapping> = {
+/**
+ * Cómo cae cada pieza de nuestro atlas dentro de la plantilla de origen.
+ * Lo comparten el importador y el generador de plantilla, que hace el
+ * camino inverso: si fueran dos tablas, un ajuste en una rompería la otra.
+ */
+export const MAPPING: Record<string, PieceMapping> = {
   front: {
     region: { ...torso, v0: torsoNeckV, v1: torso.v1 },
     flipX: false,

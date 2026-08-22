@@ -3,10 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { DesignState } from "@core/index";
 import { renderPresentation } from "@render/presentation";
+import { renderReferenceTemplate } from "@render/referenceTemplate";
 import { onImagesReady } from "@render/images";
 import { captureViewerPng, hasViewerCanvas } from "@/src/three/capture";
 
-type Kind = "presentacion" | "visor";
+type Kind = "presentacion" | "visor" | "plantilla";
+
+/** Lado de la plantilla de camiseta, en píxeles. */
+const TEMPLATE_SIZE = 2048;
 
 const SIZES = {
   presentacion: { width: 1200, height: 1500 },
@@ -23,7 +27,9 @@ function fileName(design: DesignState, kind: Kind): string {
       .replace(/^-+|-+$/g, "")
       .slice(0, 40) || "diseno";
   const base = `${slug(design.meta.clubName)}-${slug(design.meta.name)}`;
-  return `${base}-${kind === "presentacion" ? "presentacion" : "3d"}.png`;
+  const suffix =
+    kind === "presentacion" ? "presentacion" : kind === "visor" ? "3d" : "plantilla";
+  return `${base}-${suffix}.png`;
 }
 
 export function ExportDialog({
@@ -59,6 +65,17 @@ export function ExportDialog({
           return;
         }
         setDataUrl(png);
+        return;
+      }
+
+      if (kind === "plantilla") {
+        const canvas = document.createElement("canvas");
+        canvas.width = TEMPLATE_SIZE;
+        canvas.height = TEMPLATE_SIZE;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        renderReferenceTemplate(ctx, design, TEMPLATE_SIZE);
+        setDataUrl(canvas.toDataURL("image/png"));
         return;
       }
 
@@ -105,7 +122,9 @@ export function ExportDialog({
         <h2 className="text-base font-semibold text-ink-50">Exportar imagen</h2>
         <p className="mt-1 text-xs text-ink-400">
           La presentación sirve para mandar por WhatsApp o publicar; la
-          captura 3D toma la vista tal como está en pantalla.
+          captura 3D toma la vista tal como está en pantalla. La plantilla
+          editable trae el diseño en el layout del modelo: se pinta en
+          cualquier editor y se vuelve a subir con “Importar textura”.
         </p>
 
         <div className="mt-4 flex gap-1 rounded-lg bg-ink-800 p-1">
@@ -113,6 +132,7 @@ export function ExportDialog({
             [
               ["presentacion", "Presentación"],
               ["visor", "Captura 3D"],
+              ["plantilla", "Plantilla editable"],
             ] as [Kind, string][]
           ).map(([k, label]) => (
             <button
@@ -126,6 +146,14 @@ export function ExportDialog({
             </button>
           ))}
         </div>
+
+        {kind === "plantilla" && design.layers.length > 0 ? (
+          <p className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200/90">
+            El escudo, el número y el nombre ya vienen pintados en la
+            plantilla. Si la volvés a subir con “Importar textura”, ocultá
+            esas capas o vas a verlas dos veces.
+          </p>
+        ) : null}
 
         <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-lg border border-ink-700 bg-ink-900 p-3">
           {error ? (
