@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+<title>Origami Design</title>
+<defs><radialGradient id="p" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#d9dbde"/></radialGradient></defs>
+<circle cx="200" cy="200" r="200" fill="url(#p)"/>
+<g transform="translate(118 62) scale(1.64)" stroke="#eceef0" stroke-width="1.4" stroke-linejoin="round"><polygon points="13,40 34,21 30,49" fill="#0b0d10" fill-opacity="0.82"/><polygon points="87,40 66,21 70,49" fill="#0b0d10" fill-opacity="0.62"/><polygon points="34,21 50,35 31,81" fill="#0b0d10" fill-opacity="0.9"/><polygon points="50,35 50,81 31,81" fill="#0b0d10" fill-opacity="1"/><polygon points="66,21 50,35 69,81" fill="#0b0d10" fill-opacity="1"/><polygon points="50,35 50,81 69,81" fill="#0b0d10" fill-opacity="0.72"/></g>
+<text x="200" y="262" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="300" font-size="40" letter-spacing="13" fill="#0b0d10">ORIGAMI</text>
+<text x="200" y="300" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="400" font-size="17" letter-spacing="9" fill="#4a4f57">DESIGN</text>
+</svg>
