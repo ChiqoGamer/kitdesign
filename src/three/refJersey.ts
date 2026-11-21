@@ -131,23 +131,29 @@ const SIDE_FRONT = 1;
 const SIDE_BACK = 2;
 
 /**
- * Separa el torso en frente y espalda por TRIÁNGULO, no por vértice.
+ * Separa el torso en frente y espalda CORTANDO los triángulos del hombro.
  *
  * El desplegado del modelo trae el torso como una sola isla partida por el
  * escote en v = 0.5, pero nuestro atlas manda cada mitad a un rectángulo
- * distinto y lejano. Asignando por vértice, los pocos triángulos que cruzan
- * esa línea quedan con vértices en los dos rectángulos y barren todo lo que
- * hay en el medio del atlas: eso es la línea fina que aparecía sobre la
- * costura del hombro, a los lados del cuello.
+ * distinto y lejano. Un triángulo que cruza esa línea no puede quedar con
+ * vértices en los dos rectángulos: barrería todo el atlas que hay entre
+ * ellos (la línea fina que había sobre el hombro).
  *
- * La solución es duplicar los vértices de esos triángulos para que cada uno
- * caiga entero de un lado. El duplicado conserva su v original, que queda
- * del lado equivocado, y `norm` lo recorta al borde del rect — o sea al
- * propio escote, que es exactamente donde debe seguir la tela.
+ * La versión anterior lo resolvía clavando en la costura los vértices del
+ * lado equivocado. Eso aplastaba la textura dentro de cada uno de esos
+ * triángulos, y con algo dibujado justo sobre el hombro (las tres tiras de
+ * una textura importada, por ejemplo) se veían dientes a lo largo de la
+ * costura. Ahora cada triángulo que cruza se corta por la línea v = 0.5:
+ * queda un triángulo de un lado y dos del otro, con vértices nuevos sobre la
+ * costura interpolados en todos los atributos. Ninguna parte de la tela se
+ * deforma y los dos lados se encuentran exactamente en el escote.
+ *
+ * Los vértices de la costura se crean una vez por arista y por lado, así
+ * los triángulos vecinos los comparten y la malla no se abre.
  *
  * Devuelve, por vértice, de qué lado quedó (o SIDE_NONE si no es torso).
  */
-function splitTorsoSeam(
+function clipTorsoSeam(
   geo: THREE.BufferGeometry,
   torsoVerts: number[],
   neckV: number,
@@ -161,52 +167,81 @@ function splitTorsoSeam(
   for (const i of torsoVerts) isTorso[i] = 1;
   const sideOf = (i: number) => (uv.getY(i) >= neckV ? SIDE_FRONT : SIDE_BACK);
 
-  const idx = Array.from(index.array as ArrayLike<number>);
-  const dupes = new Map<string, number>();
-  const dupeSrc: number[] = [];
-  const dupeSide: number[] = [];
-
-  for (let t = 0; t < idx.length; t += 3) {
-    if (!isTorso[idx[t]]) continue;
-    const s = [sideOf(idx[t]), sideOf(idx[t + 1]), sideOf(idx[t + 2])];
-    if (s[0] === s[1] && s[1] === s[2]) continue;
-    const fronts = s.filter((x) => x === SIDE_FRONT).length;
-    const target = fronts >= 2 ? SIDE_FRONT : SIDE_BACK;
-    for (let k = 0; k < 3; k++) {
-      if (s[k] === target) continue;
-      const src = idx[t + k];
-      const key = `${src}:${target}`;
-      let nv = dupes.get(key);
-      if (nv === undefined) {
-        nv = base + dupeSrc.length;
-        dupes.set(key, nv);
-        dupeSrc.push(src);
-        dupeSide.push(target);
-      }
-      idx[t + k] = nv;
+  // Vértices nuevos: entre `a` y `b` en `t`, asignados a un lado.
+  const made = new Map<string, number>();
+  const newA: number[] = [];
+  const newB: number[] = [];
+  const newT: number[] = [];
+  const newSide: number[] = [];
+  const onSeam = (a: number, b: number, side: number): number => {
+    const [lo, hi] = a < b ? [a, b] : [b, a];
+    const key = `${lo}:${hi}:${side}`;
+    let id = made.get(key);
+    if (id === undefined) {
+      const vlo = uv.getY(lo);
+      const vhi = uv.getY(hi);
+      const t = Math.abs(vhi - vlo) < 1e-12 ? 0.5 : (neckV - vlo) / (vhi - vlo);
+      id = base + newA.length;
+      made.set(key, id);
+      newA.push(lo);
+      newB.push(hi);
+      newT.push(Math.min(1, Math.max(0, t)));
+      newSide.push(side);
     }
+    return id;
+  };
+
+  const src = index.array as ArrayLike<number>;
+  const out: number[] = [];
+  for (let t = 0; t < src.length; t += 3) {
+    const tri = [src[t], src[t + 1], src[t + 2]];
+    if (!isTorso[tri[0]]) {
+      out.push(tri[0], tri[1], tri[2]);
+      continue;
+    }
+    const s = tri.map(sideOf);
+    if (s[0] === s[1] && s[1] === s[2]) {
+      out.push(tri[0], tri[1], tri[2]);
+      continue;
+    }
+    // Rotar (conservando el sentido) para que el vértice solitario sea el 0.
+    const lone = s[0] !== s[1] && s[0] !== s[2] ? 0 : s[1] !== s[0] && s[1] !== s[2] ? 1 : 2;
+    const A = tri[lone];
+    const B = tri[(lone + 1) % 3];
+    const C = tri[(lone + 2) % 3];
+    const sa = s[lone];
+    const sb = sa === SIDE_FRONT ? SIDE_BACK : SIDE_FRONT;
+    // Lado del vértice solitario: un triángulo.
+    out.push(A, onSeam(A, B, sa), onSeam(A, C, sa));
+    // Lado opuesto: el cuadrilátero que queda, en dos triángulos.
+    const pB = onSeam(A, B, sb);
+    const pC = onSeam(A, C, sb);
+    out.push(pB, B, C, pB, C, pC);
   }
 
-  const total = base + dupeSrc.length;
+  const total = base + newA.length;
   const side = new Int8Array(total);
   for (const i of torsoVerts) side[i] = sideOf(i);
-  for (let d = 0; d < dupeSrc.length; d++) side[base + d] = dupeSide[d];
+  for (let k = 0; k < newA.length; k++) side[base + k] = newSide[k];
 
-  if (dupeSrc.length) {
+  if (newA.length) {
     for (const name of Object.keys(geo.attributes)) {
       const attr = geo.getAttribute(name) as THREE.BufferAttribute;
       const n = attr.itemSize;
-      const src = attr.array as Float32Array;
+      const arr = attr.array as ArrayLike<number>;
       const grown = new Float32Array(total * n);
-      grown.set(src);
-      for (let d = 0; d < dupeSrc.length; d++) {
-        const from = dupeSrc[d] * n;
-        const to = (base + d) * n;
-        for (let c = 0; c < n; c++) grown[to + c] = src[from + c];
+      for (let i = 0; i < base * n; i++) grown[i] = arr[i];
+      for (let k = 0; k < newA.length; k++) {
+        const a = newA[k] * n;
+        const b = newB[k] * n;
+        const to = (base + k) * n;
+        for (let c = 0; c < n; c++) {
+          grown[to + c] = arr[a + c] + (arr[b + c] - arr[a + c]) * newT[k];
+        }
       }
       geo.setAttribute(name, new THREE.BufferAttribute(grown, n));
     }
-    geo.setIndex(idx);
+    geo.setIndex(out);
   }
 
   return side;
@@ -262,10 +297,10 @@ export function prepareRefGeometry(
     const back = PIECE_BY_ID.back.rect;
 
     // Torso: escote en la fila superior del rect, ruedos abajo. Los
-    // triángulos que cruzan el escote se separan antes, o quedarían con
+    // triángulos que cruzan el escote se cortan antes, o quedarían con
     // vértices en los dos rectángulos.
     const beforeSplit = geo.getAttribute("position").count;
-    const side = splitTorsoSeam(geo, torso.verts, 0.5);
+    const side = clipTorsoSeam(geo, torso.verts, 0.5);
     const seamDupes = geo.getAttribute("position").count - beforeSplit;
     const tuv = geo.getAttribute("uv") as THREE.BufferAttribute;
     for (let i = 0; i < side.length; i++) {
@@ -314,7 +349,7 @@ export function prepareRefGeometry(
         `[REF] islas=${islands.length} torso=${torso.verts.length}` +
           ` mangas=${sleeves.map((g) => g.verts.length).join("/")}` +
           ` bordeEscote=${lip ? lip.verts.length : "no"}` +
-          ` costuraHombro=${seamDupes} vértices duplicados`,
+          ` costuraHombro=${seamDupes} vértices nuevos sobre el escote`,
       );
     }
   }
