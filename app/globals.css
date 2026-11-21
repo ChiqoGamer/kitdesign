@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Design tokens de KitDesign.
+ * Design tokens de Origami Design.
  * Se definen ANTES de traer cualquier librería de componentes: es lo que
  * evita terminar con el aspecto "dashboard genérico". Fondo casi negro
  * para que el único color saturado en pantalla sea el de la camiseta.
@@ -92,4 +92,13 @@ input[type="color"]::-webkit-color-swatch {
   background: var(--color-ink-600);
   border-radius: 6px;
   border: 3px solid var(--color-ink-850);
+}
+
+/* Barras con scroll horizontal (menú inferior en el celular): se desliza
+   con el dedo, la barra de scroll sólo ocupa lugar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

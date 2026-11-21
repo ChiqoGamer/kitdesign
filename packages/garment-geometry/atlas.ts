@@ -101,23 +101,30 @@ export const JERSEY_PIECES: Piece[] = [
 
 /**
  * Piezas del short: una por pierna, con la costura en la cara interna.
- * Se espejan en U para que un patrón asimétrico salga simétrico respecto
- * al eje del cuerpo, como en la prenda cosida.
+ * La U recorre la pierna desde la entrepierna, por la espalda, el costado
+ * y el frente (ver shorts.ts). Cada pieza cubre una vuelta entera de la
+ * coordenada de prenda; la pierna izquierda es el espejo de la derecha, así
+ * que un patrón dibujado sobre el cuerpo cae simétrico, como en la prenda
+ * cosida.
+ *
+ * Las piezas van una sobre otra y con proporción ~1.4:1, la de la pierna
+ * real (contorno ≈ 1.4 × alto). Lado a lado y altas quedaban 3 veces más
+ * angostas que la tela: un número o un logo salía aplastado.
  */
 export const SHORTS_PIECES: Piece[] = [
   {
     id: "shortsR",
     zone: "shorts",
-    rect: { x: 0.52, y: 0.04, w: 0.46, h: 0.92 },
-    garmentU: [0.25, -0.75],
+    rect: { x: 0.02, y: 0.51, w: 0.66, h: 0.47 },
+    garmentU: [-0.75, 0.25],
     garmentV: [0, 1],
     label: "Pierna derecha",
   },
   {
     id: "shortsL",
     zone: "shorts",
-    rect: { x: 0.02, y: 0.04, w: 0.46, h: 0.92 },
-    garmentU: [-0.75, 0.25],
+    rect: { x: 0.02, y: 0.02, w: 0.66, h: 0.47 },
+    garmentU: [-0.25, 0.75],
     garmentV: [0, 1],
     label: "Pierna izquierda",
   },

@@ -1,4 +1,7 @@
-# KitDesign
+# Origami Design
+
+El nombre viene del origami, el arte japonés de plegar papel: una equipación
+se arma igual, con piezas planas que se pliegan y cosen hasta tomar forma.
 
 Editor web para que un club amateur diseñe su equipación y la vea en 3D sin
 depender de un diseñador.

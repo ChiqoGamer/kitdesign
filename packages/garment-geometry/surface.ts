@@ -156,6 +156,65 @@ export function emitPiece(
   }
 }
 
+/**
+ * Normales de una rejilla sacadas de la propia rejilla: dFila × dColumna.
+ *
+ * Es el mismo producto que define el sentido de los triángulos que emite
+ * `emitPiece` (a, c, b), así que normal y cara quedan siempre del mismo lado.
+ * Calcularlas aparte (analíticas) permitía que un lado de la prenda quedara
+ * con los triángulos al revés: con DoubleSide three.js invierte la normal en
+ * las caras traseras y esa mitad se iluminaba distinto — la raya clara/oscura
+ * que tenía el short en el centro.
+ *
+ * Quien arma la rejilla elige el orden de las columnas para que el
+ * resultado apunte hacia afuera; `assertOutward` lo verifica.
+ */
+export function gridNormals(pos: THREE.Vector3[][]): THREE.Vector3[][] {
+  const rows = pos.length;
+  const cols = pos[0].length;
+  const dr = new THREE.Vector3();
+  const dc = new THREE.Vector3();
+  const out: THREE.Vector3[][] = [];
+  for (let i = 0; i < rows; i++) {
+    const row: THREE.Vector3[] = [];
+    const i0 = Math.max(0, i - 1);
+    const i1 = Math.min(rows - 1, i + 1);
+    for (let j = 0; j < cols; j++) {
+      const j0 = Math.max(0, j - 1);
+      const j1 = Math.min(cols - 1, j + 1);
+      dr.subVectors(pos[i1][j], pos[i0][j]);
+      dc.subVectors(pos[i][j1], pos[i][j0]);
+      const n = new THREE.Vector3().crossVectors(dr, dc);
+      if (n.lengthSq() < 1e-14) {
+        // Fila degenerada (punta cerrada): hereda la de la fila vecina.
+        n.copy(i > 0 ? out[i - 1][j] : new THREE.Vector3(0, 1, 0));
+      }
+      row.push(n.normalize());
+    }
+    out.push(row);
+  }
+  // Las columnas extremas son el mismo punto (tubo cerrado): se promedian
+  // para que la costura no tenga un quiebre de sombreado.
+  for (let i = 0; i < rows; i++) {
+    const a = out[i][0];
+    const b = out[i][cols - 1];
+    if (pos[i][0].distanceToSquared(pos[i][cols - 1]) < 1e-10) {
+      const m = a.clone().add(b).normalize();
+      a.copy(m);
+      b.copy(m);
+    }
+  }
+  return out;
+}
+
+/** Espejo en X de una rejilla, invirtiendo columnas para conservar el sentido. */
+export function mirrorGridX(grid: Grid): Grid {
+  const pos = grid.pos.map((row) =>
+    [...row].reverse().map((p) => new THREE.Vector3(-p.x, p.y, p.z)),
+  );
+  return { pos, nrm: gridNormals(pos) };
+}
+
 /** Vértice suelto con AO explícita (tapas de puño, puntera, etc.). */
 export function pushVertex(
   acc: Accum,

@@ -5,7 +5,7 @@ import "./globals.css";
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "KitDesign — Creá la camiseta de tu club",
+  title: "Origami Design — Diseñá la equipación de tu club",
   description:
     "Diseñá tu equipación, visualizala en 3D y compartila con tu fabricante.",
 };

@@ -30,7 +30,9 @@ interface HistoryEntry {
 
 const COALESCE_MS = 700;
 
-const STORAGE_KEY = "kitdesign:project:v1";
+const STORAGE_KEY = "origami:project:v1";
+/** Clave de antes del cambio de nombre: se lee una vez para no perder diseños. */
+const LEGACY_STORAGE_KEY = "kitdesign:project:v1";
 
 function coalesceKeyOf(action: Action): string | null {
   switch (action.type) {
@@ -48,6 +50,8 @@ function coalesceKeyOf(action: Action): string | null {
       return `rotate:${action.id}`;
     case "SET_LAYER_TEXT":
       return `text:${action.id}`;
+    case "RENAME_PALETTE_COLOR":
+      return `palette-name:${action.index}`;
     default:
       return null;
   }
@@ -165,7 +169,21 @@ export const useEditor = create<EditorStore>((set, get) => ({
     });
   },
   setSection: (section) => set({ section }),
-  setFocus: (focus) => set({ focus }),
+  setFocus(focus) {
+    // El panel sigue a la prenda que se mira: al enfocar el short o las
+    // medias se edita esa prenda, no la camiseta que quedó fuera de cuadro.
+    // "Kit completo" sólo cambia el encuadre: se sigue editando lo mismo.
+    const { selectedZone } = get();
+    if (focus === "all") {
+      set({ focus });
+    } else if (focus === "shorts" || focus === "socks") {
+      set({ focus, selectedZone: focus, section: "zonas" });
+    } else if (ZONE_GARMENT[selectedZone] !== "jersey") {
+      set({ focus, selectedZone: "body", section: "zonas" });
+    } else {
+      set({ focus, section: "zonas" });
+    }
+  },
   selectLayer: (id) => set({ selectedLayerId: id }),
 
   save() {
@@ -188,7 +206,10 @@ export const useEditor = create<EditorStore>((set, get) => ({
 
   restore() {
     if (typeof window === "undefined") return;
-    const design = parseDesign(window.localStorage.getItem(STORAGE_KEY));
+    const design = parseDesign(
+      window.localStorage.getItem(STORAGE_KEY) ??
+        window.localStorage.getItem(LEGACY_STORAGE_KEY),
+    );
     if (!design) return;
     set({
       design,
@@ -219,4 +240,12 @@ export const useEditor = create<EditorStore>((set, get) => ({
 // Dev: acceso al store desde la consola para pruebas (inyectar capas, etc.).
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
   (window as unknown as { __editor?: unknown }).__editor = useEditor;
+}
+
+/**
+ * Prenda que se está editando. Con el visor en "kit completo" no hay foco,
+ * así que manda la zona elegida (por ejemplo, al hacer clic en el short).
+ */
+export function activeGarment(s: { focus: GarmentId | "all"; selectedZone: ZoneId }): GarmentId {
+  return s.focus === "all" ? ZONE_GARMENT[s.selectedZone] : s.focus;
 }

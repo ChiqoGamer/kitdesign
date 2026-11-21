@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import {
   ANCHORS,
+  GARMENT_LABELS,
   GARMENT_ZONES,
   ZONE_LABELS,
   createLogoLayer,
@@ -11,10 +12,11 @@ import {
   layerGarment,
   resolveColor,
   type AnchorId,
+  type GarmentId,
   type Layer,
   type ZoneId,
 } from "@core/index";
-import { useEditor } from "../store";
+import { activeGarment, useEditor } from "../store";
 import { ZoneControls } from "./ZoneControls";
 import { LayerEditor } from "./LayerEditor";
 
@@ -93,19 +95,18 @@ function Row({
 }
 
 const ADD_BUTTONS = [
-  { key: "base", label: "Diseño base", icon: "M4 6h16M4 12h16M4 18h16", ready: true },
-  { key: "textura", label: "Importar textura", icon: "M4 5h16v11H4zM4 12l4-3 4 3 4-4 4 3", ready: true },
-  { key: "patron", label: "Patrón", icon: "M5 5h3v3H5zM10 5h3v3h-3zM15 5h3v3h-3zM5 10h3v3H5zM10 10h3v3h-3zM15 10h3v3h-3z", ready: true },
-  { key: "texto", label: "Texto", icon: "M5 6h14M12 6v12", ready: true },
-  { key: "logo", label: "Logo", icon: "M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z", ready: true },
-  { key: "cuffs", label: "Puños", icon: "M6 8h12v3l-2 2H8l-2-2z", ready: false },
-  { key: "sidePanels", label: "Paneles laterales", icon: "M6 4v16M18 4v16", ready: true },
-  { key: "shoulderPanels", label: "Paneles hombros", icon: "M4 8l8-4 8 4", ready: true },
+  // "Diseño base" y "Patrón" hacían lo mismo (elegir el torso) y "Puños"
+  // estaba deshabilitado: un botón que no hace nada enseña a no tocar los
+  // demás. Quedan sólo los que agregan algo.
+  { key: "logo", label: "Logo", icon: "M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z" },
+  { key: "texto", label: "Texto", icon: "M5 6h14M12 6v12" },
+  { key: "sidePanels", label: "Paneles laterales", icon: "M6 4v16M18 4v16" },
+  { key: "shoulderPanels", label: "Paneles hombros", icon: "M4 8l8-4 8 4" },
+  { key: "textura", label: "Importar textura", icon: "M4 5h16v11H4zM4 12l4-3 4 3 4-4 4 3" },
 ] as const;
 
 export function StackPanel() {
   const [tab, setTab] = useState<Tab>("capas");
-  const [notice, setNotice] = useState<string | null>(null);
 
   const design = useEditor((s) => s.design);
   const dispatch = useEditor((s) => s.dispatch);
@@ -115,6 +116,7 @@ export function StackPanel() {
   const selectedLayerId = useEditor((s) => s.selectedLayerId);
   const selectLayer = useEditor((s) => s.selectLayer);
 
+  const garment = useEditor(activeGarment);
   const fileInput = useRef<HTMLInputElement>(null);
   const pendingAnchor = useRef<AnchorId>("crest");
   const pendingName = useRef<string>("Logo");
@@ -151,7 +153,6 @@ export function StackPanel() {
           type: "IMPORT_TEXTURE",
           texture: { src, name: file.name, layout: "reference" },
         });
-        setNotice(null);
         return;
       }
       addLayer(createLogoLayer(src, pendingAnchor.current, pendingName.current));
@@ -159,17 +160,10 @@ export function StackPanel() {
     reader.readAsDataURL(file);
   };
 
-  const handleAdd = (key: string, ready: boolean, label: string) => {
-    if (!ready) {
-      setNotice(`“${label}” llega pronto — lo afinamos en el próximo paso.`);
-      return;
-    }
-    setNotice(null);
+  const handleAdd = (key: string) => {
     if (key === "texto") { addLayer(createTextLayer("JUGADOR")); setTab("numeros"); }
     else if (key === "logo") { uploadLogo("chest", "Sponsor"); setTab("logos"); }
     else if (key === "textura") { importTexture(); }
-    else if (key === "patron") { selectZone("body"); }
-    else if (key === "base") { selectZone("body"); }
     else if (key === "sidePanels") {
       dispatch({ type: "SET_ZONE_HIDDEN", zone: "sidePanels", hidden: false });
       selectZone("sidePanels");
@@ -178,6 +172,10 @@ export function StackPanel() {
       selectZone("shoulderPanels");
     }
   };
+
+  if (garment === "shorts" || garment === "socks") {
+    return <GarmentPanel garment={garment} />;
+  }
 
   return (
     <>
@@ -269,19 +267,14 @@ export function StackPanel() {
               {ADD_BUTTONS.map((b) => (
                 <button
                   key={b.key}
-                  onClick={() => handleAdd(b.key, b.ready, b.label)}
-                  className={`flex items-center gap-2 rounded-md border px-2.5 py-2 text-left text-xs transition-colors ${
-                    b.ready
-                      ? "border-ink-700 text-ink-200 hover:border-ink-500 hover:bg-ink-800"
-                      : "border-ink-800 text-ink-500 hover:bg-ink-800/50"
-                  }`}
+                  onClick={() => handleAdd(b.key)}
+                  className="flex items-center gap-2 rounded-md border border-ink-700 px-2.5 py-2 text-left text-xs text-ink-200 transition-colors hover:border-ink-500 hover:bg-ink-800"
                 >
                   <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d={b.icon} /></svg>
                   <span className="truncate">{b.label}</span>
                 </button>
               ))}
             </div>
-            {notice ? <p className="mt-2 text-[11px] text-accent-dim">{notice}</p> : null}
           </div>
 
           <ZoneControls zone={selectedZone} />
@@ -381,4 +374,67 @@ function label(l: Layer): string {
   if (l.kind === "text") return `“${l.text}” · ${where}`;
   if (l.kind === "number") return `Nº ${l.value} · ${where}`;
   return `${l.name} · ${where}`;
+}
+
+/**
+ * Panel del short o de las medias.
+ *
+ * Antes el panel mostraba siempre las capas de la camiseta y el short sólo
+ * se podía editar haciendo clic sobre el modelo. Ahora, al enfocar una de
+ * estas prendas en el visor, el panel pasa a ser el de esa prenda: su
+ * diseño base y, en el short, el número.
+ */
+function GarmentPanel({ garment }: { garment: Extract<GarmentId, "shorts" | "socks"> }) {
+  const design = useEditor((s) => s.design);
+  const dispatch = useEditor((s) => s.dispatch);
+  const addLayer = useEditor((s) => s.addLayer);
+  const selectedLayerId = useEditor((s) => s.selectedLayerId);
+  const selectLayer = useEditor((s) => s.selectLayer);
+
+  const zone: ZoneId = garment;
+  const fill = design.kit.zones[zone];
+  const layers = design.layers.filter((l) => layerGarment(l) === garment);
+
+  return (
+    <>
+      <div className="px-3 pt-3 text-[11px] font-semibold uppercase tracking-[0.13em] text-ink-500">
+        {GARMENT_LABELS[garment]}
+      </div>
+      <div className="flex flex-col gap-1 p-2">
+        <Row
+          active
+          visible={!fill.hidden}
+          swatch={resolveColor(design, fill.colors[0])}
+          name="Diseño base"
+          onToggle={() => dispatch({ type: "TOGGLE_ZONE", zone })}
+          onSelect={() => selectLayer(null)}
+        />
+      </div>
+
+      {garment === "shorts" ? (
+        <>
+          <div className="flex gap-2 px-3 pb-2">
+            <button
+              onClick={() => addLayer({ ...createNumberLayer("10"), anchor: "shortsNumber" })}
+              className="flex flex-1 items-center justify-center rounded-md border border-ink-700 px-3 py-2.5 text-[13px] text-ink-200 hover:border-ink-500 hover:bg-ink-800"
+            >
+              Agregar número
+            </button>
+          </div>
+          <LayerList
+            layers={layers}
+            selectedId={selectedLayerId}
+            onSelect={selectLayer}
+            emptyText="El número va en el frente de la pierna izquierda."
+          />
+        </>
+      ) : null}
+
+      {selectedLayerId && layers.some((l) => l.id === selectedLayerId) ? (
+        <LayerEditor layerId={selectedLayerId} />
+      ) : (
+        <ZoneControls zone={zone} />
+      )}
+    </>
+  );
 }
