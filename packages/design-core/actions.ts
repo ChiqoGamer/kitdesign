@@ -39,6 +39,9 @@ export type Action =
   | { type: "SET_CONSTRUCTION"; key: "collar"; value: CollarKind }
   | { type: "SET_CONSTRUCTION"; key: "sleeve"; value: SleeveKind }
   | { type: "SET_PALETTE_COLOR"; index: number; hex: string }
+  | { type: "ADD_PALETTE_COLOR"; hex: string; name: string }
+  | { type: "RENAME_PALETTE_COLOR"; index: number; name: string }
+  | { type: "REMOVE_PALETTE_COLOR"; index: number }
   | { type: "SET_META"; key: keyof DesignState["meta"]; value: string }
   | { type: "ADD_LAYER"; layer: Layer }
   | { type: "REMOVE_LAYER"; id: string }
@@ -77,6 +80,9 @@ export function describeAction(action: Action): string {
     case "SET_CONSTRUCTION":
       return `Cambio de ${action.key}`;
     case "SET_PALETTE_COLOR":
+    case "ADD_PALETTE_COLOR":
+    case "RENAME_PALETTE_COLOR":
+    case "REMOVE_PALETTE_COLOR":
       return "Paleta del club";
     case "SET_META":
       return "Datos del diseño";

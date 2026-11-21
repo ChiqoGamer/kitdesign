@@ -210,3 +210,22 @@ export function resolveColor(state: DesignState, ref: ColorRef): string {
   }
   return ref;
 }
+
+/** Límites de la paleta del club. Tres es lo que usan las plantillas. */
+export const PALETTE_MIN = 3;
+export const PALETTE_MAX = 6;
+
+/** Si alguna zona o capa usa el color `index` de la paleta. */
+export function paletteIndexInUse(state: DesignState, index: number): boolean {
+  const ref = `palette:${index}`;
+  for (const zone of Object.values(state.kit.zones)) {
+    if (zone.colors.includes(ref)) return true;
+  }
+  for (const layer of state.layers) {
+    if (layer.kind === "text" && layer.color === ref) return true;
+    if (layer.kind === "number" && (layer.color === ref || layer.outline === ref)) {
+      return true;
+    }
+  }
+  return false;
+}

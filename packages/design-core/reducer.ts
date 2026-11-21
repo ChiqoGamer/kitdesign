@@ -1,7 +1,12 @@
 import { enablePatches, produceWithPatches, type Patch } from "immer";
 import type { Action } from "./actions";
 import { clampParam } from "./params";
-import type { DesignState } from "./types";
+import {
+  PALETTE_MAX,
+  PALETTE_MIN,
+  paletteIndexInUse,
+  type DesignState,
+} from "./types";
 
 enablePatches();
 
@@ -66,6 +71,30 @@ export function applyAction(state: DesignState, action: Action): ApplyResult {
         case "SET_PALETTE_COLOR": {
           const entry = draft.palette[action.index];
           if (entry) entry.hex = action.hex;
+          break;
+        }
+        case "ADD_PALETTE_COLOR": {
+          if (draft.palette.length >= PALETTE_MAX) break;
+          draft.palette.push({
+            id: `p${Date.now().toString(36)}${draft.palette.length}`,
+            hex: action.hex,
+            name: action.name,
+          });
+          break;
+        }
+        case "RENAME_PALETTE_COLOR": {
+          const entry = draft.palette[action.index];
+          if (entry) entry.name = action.name;
+          break;
+        }
+        case "REMOVE_PALETTE_COLOR": {
+          // Las zonas y capas apuntan a la paleta por índice ("palette:3"),
+          // así que sólo se puede quitar el último y si nadie lo usa: si no,
+          // un color en uso pasaría a ser otro sin aviso.
+          const last = draft.palette.length - 1;
+          if (action.index !== last || last < PALETTE_MIN) break;
+          if (paletteIndexInUse(draft as DesignState, last)) break;
+          draft.palette.pop();
           break;
         }
         case "SET_META": {

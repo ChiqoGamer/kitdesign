@@ -1,5 +1,7 @@
 "use client";
 
+import { Brand } from "@/src/components/Brand";
+
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { DesignState } from "@core/index";
@@ -24,12 +26,7 @@ export function SharedView({ design }: { design: DesignState }) {
   return (
     <div className="grid h-full grid-rows-[auto_1fr_auto]">
       <header className="flex flex-wrap items-center gap-4 border-b border-ink-700 bg-ink-850 px-5 py-3">
-        <div className="flex items-center gap-2">
-          <div className="grid h-6 w-6 place-items-center rounded bg-accent text-[13px] font-black text-accent-ink">
-            K
-          </div>
-          <span className="text-sm font-semibold tracking-tight">KitDesign</span>
-        </div>
+        <Brand />
         <div className="h-5 w-px bg-ink-700" />
         <div className="min-w-0 text-sm">
           <span className="text-ink-400">{design.meta.clubName}</span>
