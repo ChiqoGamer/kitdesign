@@ -1,7 +1,14 @@
-import { saveSharedDesign } from "@/src/server/designStore";
+import {
+  ShareUnavailableError,
+  saveSharedDesign,
+} from "@/src/server/designStore";
 
-/** Límite de tamaño: los escudos van como dataURL y pueden pesar. */
-const MAX_BYTES = 6 * 1024 * 1024;
+/**
+ * Límite de tamaño: los escudos van como dataURL y pueden pesar. Queda por
+ * debajo de los 4.5 MB que Vercel acepta como cuerpo de una función, así el
+ * usuario ve nuestro mensaje y no un error genérico de la plataforma.
+ */
+const MAX_BYTES = 4 * 1024 * 1024;
 
 export async function POST(request: Request) {
   const text = await request.text();
@@ -19,6 +26,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "JSON inválido." }, { status: 400 });
   }
 
-  const record = await saveSharedDesign(payload);
-  return Response.json({ slug: record.slug });
+  try {
+    const record = await saveSharedDesign(payload);
+    return Response.json({ slug: record.slug });
+  } catch (err) {
+    if (err instanceof ShareUnavailableError) {
+      return Response.json({ error: err.message }, { status: 503 });
+    }
+    console.error("No se pudo guardar el diseño compartido", err);
+    return Response.json(
+      { error: "No se pudo crear el link. Probá de nuevo en un rato." },
+      { status: 500 },
+    );
+  }
 }
