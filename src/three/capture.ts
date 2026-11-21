@@ -9,7 +9,19 @@
  * puede estar vacío al momento de leerlo.
  */
 
+import type * as THREE from "three";
+
 let viewerCanvas: HTMLCanvasElement | null = null;
+let viewerScene: THREE.Scene | null = null;
+
+/** La escena del visor, para exportar el kit como modelo 3D. */
+export function registerViewerScene(scene: THREE.Scene | null): void {
+  viewerScene = scene;
+}
+
+export function getViewerScene(): THREE.Scene | null {
+  return viewerScene;
+}
 
 export function registerViewerCanvas(canvas: HTMLCanvasElement | null): void {
   viewerCanvas = canvas;

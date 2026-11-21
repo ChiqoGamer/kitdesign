@@ -10,8 +10,9 @@ import {
   OrbitControls,
 } from "@react-three/drei";
 import type { DesignState, ZoneId } from "@core/index";
-import { Kit, type KitFocus } from "./Kit";
-import { registerViewerCanvas } from "./capture";
+import { Kit, type KitFocus, type LayerDragHandlers } from "./Kit";
+import { registerViewerCanvas, registerViewerScene } from "./capture";
+import type { UnfoldInfo } from "./unfold";
 
 export type ViewName = "front" | "back" | "left" | "right";
 
@@ -80,12 +81,25 @@ function frameVisible(
   scene: THREE.Scene,
   fovDeg: number,
   aspect: number,
+  unfolded: boolean,
 ): { center: THREE.Vector3; distance: number } | null {
   const box = new THREE.Box3();
   let found = false;
   scene.traverse((o) => {
     if (o.visible && o.userData?.garment) {
-      box.expandByObject(o);
+      // Con morphs, la caja de la geometría no sirve: se usa la del estado
+      // al que se va (armada o molde), guardada al crear el morph.
+      const info = o.userData.unfold as UnfoldInfo | undefined;
+      if (info) {
+        o.updateWorldMatrix(true, false);
+        box.union(
+          (unfolded ? info.flatBox : info.foldedBox)
+            .clone()
+            .applyMatrix4(o.matrixWorld),
+        );
+      } else {
+        box.expandByObject(o);
+      }
       found = true;
     }
   });
@@ -107,11 +121,13 @@ function ViewController({
   focus,
   nonce,
   freeOrbit,
+  unfolded,
 }: {
   view: ViewName;
   focus: KitFocus;
   nonce: number;
   freeOrbit?: boolean;
+  unfolded: boolean;
 }) {
   const controls = useThree((s) => s.controls) as
     | { target?: THREE.Vector3; update?: () => void }
@@ -125,7 +141,7 @@ function ViewController({
 
   useEffect(() => {
     pending.current = true;
-  }, [view, focus, nonce, size.width, size.height]);
+  }, [view, focus, nonce, size.width, size.height, unfolded]);
 
   /**
    * Al volver de órbita libre a giratorio, endereza la cámara.
@@ -158,6 +174,7 @@ function ViewController({
         state.scene,
         (state.camera as THREE.PerspectiveCamera).fov,
         state.size.width / Math.max(1, state.size.height),
+        unfolded,
       );
       if (framed) {
         pending.current = false;
@@ -264,7 +281,11 @@ interface Props {
    * libre deja además inclinar la cámara, útil para revisar hombros y cuello.
    */
   freeOrbit?: boolean;
+  /** Prendas abiertas en su molde plano. */
+  unfolded?: boolean;
   onPickZone: (zone: ZoneId) => void;
+  /** Arrastrar capas sobre el 3D; sólo lo pasa el editor. */
+  drag?: LayerDragHandlers;
 }
 
 export function Viewer({
@@ -274,7 +295,9 @@ export function Viewer({
   view,
   viewNonce,
   focus,
+  unfolded = false,
   onPickZone,
+  drag,
 }: Props) {
   const panning = useShiftHeld(!!freeOrbit);
 
@@ -290,8 +313,9 @@ export function Viewer({
         // Necesario para poder exportar el visor como PNG.
         preserveDrawingBuffer: true,
       }}
-      onCreated={({ gl }) => {
+      onCreated={({ gl, scene }) => {
         registerViewerCanvas(gl.domElement);
+        registerViewerScene(scene);
         // Exposición < 1: con ACES y un entorno de estudio, el default quema
         // los colores saturados y un azul de club sale celeste.
         gl.toneMappingExposure = 0.92;
@@ -322,7 +346,9 @@ export function Viewer({
         design={design}
         revision={revision}
         focus={focus}
+        unfolded={unfolded}
         onPickZone={onPickZone}
+        drag={drag}
       />
 
       <ContactShadows
@@ -361,6 +387,7 @@ export function Viewer({
         focus={focus}
         nonce={viewNonce}
         freeOrbit={freeOrbit}
+        unfolded={unfolded}
       />
     </Canvas>
   );

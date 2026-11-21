@@ -107,12 +107,10 @@ export const ANCHORS: Record<AnchorId, Anchor> = {
     id: "shortsNumber",
     garment: "shorts",
     label: "Número (short)",
-    // Frente de la pierna izquierda del jugador, hacia el costado. En las
-    // piezas del short la U avanza hacia la derecha de quien mira el frente
-    // al revés que en la camiseta, por eso va espejado.
-    uv: { x: 0.495, y: 0.63 },
+    // Frente de la pierna izquierda del jugador, hacia el costado.
+    uv: { x: 0.205, y: 0.63 },
     baseSize: 0.09,
-    mirror: true,
+    mirror: false,
     flat: { side: "front", x: 0.34, y: 0.42 },
   },
 };

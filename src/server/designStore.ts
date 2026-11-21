@@ -21,7 +21,7 @@ import { get, put } from "@vercel/blob";
  * proyecto. En local, sin token, sigue escribiendo en `.data/`.
  */
 
-const useBlob = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const blobEnabled = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 const blobPath = (slug: string) => `designs/${slug}.json`;
 
 /** Error con un mensaje que se puede mostrar al usuario tal cual. */
@@ -57,7 +57,7 @@ export async function saveSharedDesign(payload: unknown): Promise<SharedDesign> 
     createdAt: new Date().toISOString(),
     payload,
   };
-  if (useBlob()) {
+  if (blobEnabled()) {
     await put(blobPath(slug), JSON.stringify(record), {
       access: "private",
       contentType: "application/json",
@@ -81,7 +81,7 @@ export async function loadSharedDesign(
 ): Promise<SharedDesign | null> {
   if (!isValidSlug(slug)) return null;
   try {
-    if (useBlob()) {
+    if (blobEnabled()) {
       const result = await get(blobPath(slug), { access: "private" });
       if (!result || result.statusCode !== 200) return null;
       const raw = await new Response(result.stream).text();
