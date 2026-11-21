@@ -14,6 +14,7 @@ import { useGarmentTexture } from "./useGarmentTexture";
 import { getFabricNormalMap, getFabricRoughnessMap } from "./fabricNormal";
 import { UNFOLD_DELAY, addFlatMorph, easeInOut, type UnfoldInfo } from "./unfold";
 import { layerAtUv } from "./layerHit";
+import { useLocalGarment } from "./localModels";
 
 /**
  * Disposición del kit completo en escena, estilo "equipación flotante":
@@ -275,12 +276,18 @@ export function Kit({ design, revision, focus, unfolded = false, onPickZone, dra
     () => withUnfold(prepareRefGeometry(refScene), "jersey"),
     [refScene],
   );
-  const shorts = useMemo(() => withUnfold(buildShortsGeometry(), "shorts"), []);
-  const socks = useMemo(() => withUnfold(buildSocksGeometry(), "socks"), []);
+  const procShorts = useMemo(() => withUnfold(buildShortsGeometry(), "shorts"), []);
+  const procSocks = useMemo(() => withUnfold(buildSocksGeometry(), "socks"), []);
+  // Modelos locales de uso personal (no se suben): si existen, reemplazan a
+  // los procedurales. Ver `localModels.ts`.
+  const localShorts = useLocalGarment("shorts", withUnfold);
+  const localSocks = useLocalGarment("socks", withUnfold);
+  const shorts = localShorts ?? procShorts;
+  const socks = localSocks ?? procSocks;
 
   useEffect(() => () => jersey.geometry.dispose(), [jersey]);
-  useEffect(() => () => shorts.geometry.dispose(), [shorts]);
-  useEffect(() => () => socks.geometry.dispose(), [socks]);
+  useEffect(() => () => procShorts.geometry.dispose(), [procShorts]);
+  useEffect(() => () => procSocks.geometry.dispose(), [procSocks]);
 
   const show = (g: GarmentId) => focus === "all" || focus === g;
   const common = { design, revision, onPickZone, unfolded, drag };
@@ -288,8 +295,8 @@ export function Kit({ design, revision, focus, unfolded = false, onPickZone, dra
   return (
     <group position={[0, KIT_Y, 0]}>
       <GarmentMesh {...common} garment="jersey" {...jersey} visible={show("jersey")} />
-      <GarmentMesh {...common} garment="shorts" {...shorts} visible={show("shorts")} />
-      <GarmentMesh {...common} garment="socks" {...socks} visible={show("socks")} />
+      <GarmentMesh key={shorts.geometry.uuid} {...common} garment="shorts" {...shorts} visible={show("shorts")} />
+      <GarmentMesh key={socks.geometry.uuid} {...common} garment="socks" {...socks} visible={show("socks")} />
     </group>
   );
 }

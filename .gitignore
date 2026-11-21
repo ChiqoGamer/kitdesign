@@ -45,3 +45,9 @@ next-env.d.ts
 
 # Diseños compartidos (almacén local temporal)
 .data/
+
+# Modelos locales de terceros (nunca al repo ni al deploy)
+local-models/
+
+# Modelos locales de uso personal (FIFA): nunca al repo ni al deploy.
+public/models/local/
