@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GARMENT_IDS, GARMENT_LABELS, type GarmentId } from "@core/index";
 import { activeGarment, useEditor } from "@/src/editor/store";
 import { useAutosave } from "@/src/editor/useAutosave";
@@ -108,6 +108,8 @@ export default function EditorPage() {
   const focus = useEditor((s) => s.focus);
   const setFocus = useEditor((s) => s.setFocus);
   const garment = useEditor(activeGarment);
+  const dispatch = useEditor((s) => s.dispatch);
+  const selectLayer = useEditor((s) => s.selectLayer);
   const undo = useEditor((s) => s.undo);
   const redo = useEditor((s) => s.redo);
   const canUndo = useEditor((s) => s.past.length > 0);
@@ -117,6 +119,7 @@ export default function EditorPage() {
   const [view, setView] = useState<ViewName>("front");
   const [viewNonce, setViewNonce] = useState(0);
   const [freeOrbit, setFreeOrbit] = useState(false);
+  const [unfolded, setUnfolded] = useState(false);
 
   const [sharing, setSharing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -157,6 +160,22 @@ export default function EditorPage() {
   }, [undo, redo, save]);
 
   const wholeKit = focus === "all";
+
+  /** Arrastrar escudo, sponsor o número directo sobre la prenda. */
+  const drag = useMemo(
+    () => ({
+      onSelectLayer: (id: string) => selectLayer(id),
+      onMoveLayer: (id: string, offset: { x: number; y: number }) =>
+        dispatch({ type: "MOVE_LAYER", id, offset }),
+    }),
+    [dispatch, selectLayer],
+  );
+
+  const toggleUnfold = () => {
+    // El molde se lee de frente: desplegar siempre vuelve a esa vista.
+    if (!unfolded) goToView("front");
+    setUnfolded((v) => !v);
+  };
 
   return (
     <div className="flex h-full flex-col bg-ink-900">
@@ -286,7 +305,9 @@ export default function EditorPage() {
                 view={view}
                 viewNonce={viewNonce}
                 focus={focus}
+                unfolded={unfolded}
                 onPickZone={selectZone}
+                drag={drag}
               />
 
               {/*
@@ -309,6 +330,33 @@ export default function EditorPage() {
                     <path d={GARMENT_ICONS.all} />
                   </svg>
                   <span className="pr-1">Kit completo</span>
+                </button>
+                {/*
+                  Desplegar: la prenda se abre en sus piezas de molde, que
+                  son exactamente las que se imprimen y se cosen.
+                */}
+                <button
+                  onClick={toggleUnfold}
+                  aria-pressed={unfolded}
+                  title={
+                    unfolded
+                      ? "Volver a armar la prenda"
+                      : "Abrir la prenda en sus piezas de molde, como se cortan para coserla"
+                  }
+                  className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors ${
+                    unfolded
+                      ? "bg-ink-700 text-accent"
+                      : "text-ink-400 hover:bg-ink-700/60 hover:text-ink-100"
+                  }`}
+                >
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true">
+                    {unfolded ? (
+                      <path d="M4 18 12 5l8 13zM12 5v13" />
+                    ) : (
+                      <path d="M3 6h8v12H3zM13 6h8v12h-8zM11 9h2M11 15h2" />
+                    )}
+                  </svg>
+                  <span className="pr-1">{unfolded ? "Armar" : "Desplegar"}</span>
                 </button>
               </div>
 

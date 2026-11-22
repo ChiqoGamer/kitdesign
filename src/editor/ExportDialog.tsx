@@ -8,8 +8,9 @@ import { renderPieceGuide } from "@render/pieceGuide";
 import { loadRefSilhouettes } from "@/src/three/refSilhouettes";
 import { onImagesReady } from "@render/images";
 import { captureViewerPng, hasViewerCanvas } from "@/src/three/capture";
+import { exportKitGlb } from "@/src/three/exportGlb";
 
-type Kind = "presentacion" | "visor" | "plantilla" | "guia";
+type Kind = "presentacion" | "visor" | "plantilla" | "guia" | "modelo";
 
 /** Lado de la plantilla de camiseta, en píxeles. */
 const TEMPLATE_SIZE = 2048;
@@ -37,6 +38,7 @@ function fileName(design: DesignState, kind: Kind): string {
         : kind === "guia"
           ? "guia-piezas"
           : "plantilla";
+  if (kind === "modelo") return `${base}-kit-3d.glb`;
   return `${base}-${suffix}.png`;
 }
 
@@ -50,6 +52,7 @@ export function ExportDialog({
   const [kind, setKind] = useState<Kind>("presentacion");
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const previewRef = useRef<HTMLImageElement>(null);
 
   // La lámina se rehace cuando cambia la opción (y cuando terminan de
@@ -60,6 +63,11 @@ export function ExportDialog({
     const build = () => {
       if (cancelled) return;
       setError("");
+      // El modelo 3D no tiene vista previa en imagen: se arma al descargar.
+      if (kind === "modelo") {
+        setDataUrl(null);
+        return;
+      }
       if (kind === "visor") {
         if (!hasViewerCanvas()) {
           setDataUrl(null);
@@ -125,7 +133,32 @@ export function ExportDialog({
     };
   }, [design, kind]);
 
+  const downloadModel = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const blob = await exportKitGlb();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName(design, "modelo");
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Se libera después: algunos navegadores leen la URL en diferido.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo exportar el modelo.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const download = () => {
+    if (kind === "modelo") {
+      void downloadModel();
+      return;
+    }
     if (!dataUrl) return;
     const a = document.createElement("a");
     a.href = dataUrl;
@@ -144,7 +177,7 @@ export function ExportDialog({
         className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl border border-ink-700 bg-ink-850 p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-base font-semibold text-ink-50">Exportar imagen</h2>
+        <h2 className="text-base font-semibold text-ink-50">Exportar</h2>
         <p className="mt-1 text-xs text-ink-400">
           La presentación sirve para mandar por WhatsApp o publicar; la
           captura 3D toma la vista tal como está en pantalla. La plantilla
@@ -162,6 +195,7 @@ export function ExportDialog({
               ["visor", "Captura 3D"],
               ["plantilla", "Plantilla"],
               ["guia", "Guía de piezas"],
+              ["modelo", "Modelo 3D"],
             ] as [Kind, string][]
           ).map(([k, label]) => (
             <button
@@ -185,7 +219,20 @@ export function ExportDialog({
         ) : null}
 
         <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-lg border border-ink-700 bg-ink-900 p-3">
-          {error ? (
+          {kind === "modelo" ? (
+            <div className="mx-auto max-w-md py-6 text-center">
+              <p className="text-sm text-ink-100">
+                Camiseta, short y medias en un archivo .glb, con el diseño
+                aplicado.
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-ink-400">
+                Se abre en Blender, en visores 3D online y, en un celular
+                Android, directo en realidad aumentada. Sirve para mandarle al
+                fabricante el kit tal como lo ves acá.
+              </p>
+              {error ? <p className="mt-3 text-xs text-red-400">{error}</p> : null}
+            </div>
+          ) : error ? (
             <p className="py-8 text-center text-xs text-ink-500">{error}</p>
           ) : dataUrl ? (
             <img
@@ -202,10 +249,14 @@ export function ExportDialog({
         <div className="mt-4 flex items-center gap-2">
           <button
             onClick={download}
-            disabled={!dataUrl}
+            disabled={kind === "modelo" ? busy : !dataUrl}
             className="flex-1 rounded-md bg-accent px-3 py-2.5 text-sm font-semibold text-accent-ink transition-colors hover:bg-accent-dim disabled:opacity-50"
           >
-            Descargar PNG
+            {kind === "modelo"
+              ? busy
+                ? "Armando el modelo…"
+                : "Descargar modelo 3D (.glb)"
+              : "Descargar PNG"}
           </button>
           <button
             onClick={onClose}

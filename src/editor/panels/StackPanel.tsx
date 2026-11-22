@@ -117,6 +117,19 @@ export function StackPanel() {
   const selectLayer = useEditor((s) => s.selectLayer);
 
   const garment = useEditor(activeGarment);
+
+  // Al agarrar una capa en el visor, el panel abre su pestaña para que el
+  // ajuste fino (tamaño, rotación) quede a mano. Se ajusta durante el render
+  // cuando cambia la selección, no en un efecto: así no hay un render de más
+  // con la pestaña equivocada.
+  const [seenSelection, setSeenSelection] = useState(selectedLayerId);
+  if (selectedLayerId !== seenSelection) {
+    setSeenSelection(selectedLayerId);
+    const layer = design.layers.find((l) => l.id === selectedLayerId);
+    if (layer && layerGarment(layer) === "jersey") {
+      setTab(layer.kind === "logo" ? "logos" : "numeros");
+    }
+  }
   const fileInput = useRef<HTMLInputElement>(null);
   const pendingAnchor = useRef<AnchorId>("crest");
   const pendingName = useRef<string>("Logo");

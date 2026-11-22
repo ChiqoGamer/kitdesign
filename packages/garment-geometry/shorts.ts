@@ -194,8 +194,14 @@ function sampleRightLeg(): Grid {
 export function buildShortsGeometry(): THREE.BufferGeometry {
   const acc = newAccum();
   const right = sampleRightLeg();
-  emitPiece(acc, right, 0, N_THETA, PIECE_BY_ID.shortsR.rect);
-  emitPiece(acc, mirrorGridX(right), 0, N_THETA, PIECE_BY_ID.shortsL.rect);
+  // flipU: con las columnas en el sentido que deja las caras hacia afuera,
+  // la U avanzaba al revés de como se ve la tela desde afuera y el molde
+  // impreso salía espejado (un número se leía al revés). Invertirla deja el
+  // atlas tal como se ve la prenda puesta.
+  emitPiece(acc, right, 0, N_THETA, PIECE_BY_ID.shortsR.rect, { flipU: true });
+  emitPiece(acc, mirrorGridX(right), 0, N_THETA, PIECE_BY_ID.shortsL.rect, {
+    flipU: true,
+  });
   return toBufferGeometry(acc);
 }
 
